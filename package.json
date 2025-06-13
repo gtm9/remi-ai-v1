@@ -11,10 +11,17 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "@expo/html-elements": "^0.4.2",
     "@expo/vector-icons": "^14.1.0",
+    "@gluestack-ui/avatar": "^0.1.18",
+    "@gluestack-ui/button": "^1.0.14",
+    "@gluestack-ui/divider": "^0.1.10",
     "@gluestack-ui/icon": "^0.1.27",
+    "@gluestack-ui/image": "^0.1.17",
+    "@gluestack-ui/link": "^0.1.29",
     "@gluestack-ui/nativewind-utils": "^1.0.26",
     "@gluestack-ui/overlay": "^0.1.22",
+    "@gluestack-ui/pressable": "^0.1.23",
     "@gluestack-ui/toast": "^1.0.9",
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
@@ -34,6 +41,7 @@
     "expo-symbols": "~0.4.5",
     "expo-system-ui": "~5.0.8",
     "expo-web-browser": "~14.1.6",
+    "lucide-react-native": "^0.514.0",
     "nativewind": "^4.1.23",
     "react": "19.0.0",
     "react-dom": "19.0.0",
@@ -56,11 +64,14 @@
     "jscodeshift": "^0.15.2",
     "typescript": "~5.8.3"
   },
-    "expo": {
+  "expo": {
     "doctor": {
       "reactNativeDirectoryCheck": {
         "enabled": false,
-        "exclude": ["/foo/", "bar"],
+        "exclude": [
+          "/foo/",
+          "bar"
+        ],
         "listUnknownPackages": true
       }
     }
