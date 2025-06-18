@@ -7,7 +7,7 @@ import { GlobeIcon, Icon, SettingsIcon } from '@/components/ui/icon';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { House } from 'lucide-react-native';
+import { House, Plus } from 'lucide-react-native';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -53,6 +53,13 @@ export default function TabLayout() {
         options={{
           title: 'Settings',
           tabBarIcon: ({ color }) => <Icon as={SettingsIcon} className="text-typography-500 m-2" />,
+        }}
+      />
+      <Tabs.Screen
+        name="addreminder"
+        options={{
+          title: 'Add Reminder',
+          tabBarIcon: ({ color }) => <Icon as={Plus} className="text-typography-500 m-2" />,
         }}
       />
     </Tabs>
