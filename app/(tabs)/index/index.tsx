@@ -68,16 +68,6 @@ const Header = () => {
           Tell Remi what you need reminded of
         </Text>
       </VStack>
-      {/* <VStack className="hidden lg:flex flex-1 max-h-[510px] h-full aspect-[1075/510]">
-        <ExpoImage
-          source={{
-            uri:"https://i.imgur.com/icZHMep.png"
-          }}
-          alt="header_image"
-          className="flex-1"
-          cachePolicy="memory-disk"
-        />
-      </VStack> */}
     </HStack>
   );
 };
