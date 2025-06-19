@@ -3,11 +3,11 @@ import React from 'react';
 import { Platform } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
-import { GlobeIcon, Icon, SettingsIcon } from '@/components/ui/icon';
+import { Icon, SettingsIcon } from '@/components/ui/icon';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { House, Plus } from 'lucide-react-native';
+import { AudioLines, House, Plus } from 'lucide-react-native';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -37,8 +37,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <Icon as={GlobeIcon} className="text-typography-500 m-2" />,
+          title: 'Voices',
+          tabBarIcon: ({ color }) => <Icon as={AudioLines} className="text-typography-500 m-2" />,
         }}
       />
       {/* <Tabs.Screen
