@@ -24,7 +24,7 @@ export default function ReminderCard({
   onDelete: (id: string) => void; // Define onDelete as a function that takes an id
 }) {
   return (
-    <Card size="md" variant="elevated" className="m-3 relative"> {/* Add relative for absolute positioning of button */}
+    <Card size="md" variant="elevated" className="m-3 relative">
       <Heading size="md" className="mb-1">
         {title}
       </Heading>

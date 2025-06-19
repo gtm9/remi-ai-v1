@@ -107,21 +107,6 @@ export default function HomeScreen() {
                     />                  </Box>
                 </Pressable>
               ))}
-              {/* Original placeholder ReminderCards - remove if not needed */}
-              {/* <Pressable
-                onPress={()=>router.push("/actionsheet")}
-              >
-                <Box className="h-[100px] w-[350px] border-2 border-solid" >
-                  <ReminderCard title={"Reminder1"} description={"Reminder1"} />
-                </Box>
-              </Pressable>
-              <Pressable
-                onPress={()=>router.push("/actionsheet")}
-              >
-                <Box className="h-[100px] w-[350px] border-2 border-solid" >
-                  <ReminderCard title={"Reminder1"} description={"Reminder1"} />
-                </Box>
-              </Pressable> */}
             </VStack>
           </HStack>
         </ScrollView>
