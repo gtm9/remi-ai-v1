@@ -35,7 +35,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="voices"
         options={{
           title: 'Voices',
           tabBarIcon: ({ color }) => <Icon as={AudioLines} className="text-typography-500 m-2" />,

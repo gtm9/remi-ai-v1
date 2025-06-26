@@ -8,10 +8,9 @@ module.exports = function(api) {
 
         plugins: [["module-resolver", {
             root: ["./"],
-
             alias: {
                 "@": "./",
-                "tailwind.config": "./tailwind.config.js"
+                "tailwind.config": "./tailwind.config.js",
             }
         }]]
     };

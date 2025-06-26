@@ -1,3 +1,4 @@
+import { addReminder, deleteReminder, getReminders, reminderEventEmitter } from "@/app/store/reminderStore";
 import ReminderCard from "@/components/ReminderCard";
 import { Box } from "@/components/ui/box";
 import { Button, ButtonText } from "@/components/ui/button";
@@ -21,12 +22,13 @@ import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import { Plus } from "lucide-react-native";
 import { cssInterop } from "nativewind";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   // Modal, 
   ScrollView,
   TouchableOpacity, View
 } from 'react-native';
+import Animated, { FadeOut, Layout, SlideInRight } from 'react-native-reanimated';
 import { SafeAreaView } from "react-native-safe-area-context";
 
 cssInterop(SafeAreaView, { className: "style" });
@@ -47,27 +49,36 @@ export default function HomeScreen() {
   // Update state type to include id
   const [reminders, setReminders] = useState<ReminderItem[]>([]);
 
+  // Effect to listen for changes in the store and update local state
+  useEffect(() => {
+    const handleRemindersChanged = () => {
+      setReminders(getReminders());
+    };
 
+    reminderEventEmitter.on('remindersChanged', handleRemindersChanged);
+
+    // Clean up listener on component unmount
+    return () => {
+      reminderEventEmitter.off('remindersChanged', handleRemindersChanged);
+    };
+  }, []);
+  
   const handleAddReminder = () => {
-    if (!reminderTitle.trim()) { // Basic validation
+    if (!reminderTitle.trim()) {
       alert('Reminder title cannot be empty!');
       return;
     }
-    const newReminder: ReminderItem = {
-      id: Date.now().toString(), // Simple unique ID using timestamp
-      title: reminderTitle,
-      description: reminderDescription,
-    };
-    setReminders([...reminders, newReminder]);
-    console.log("New Reminder:", newReminder);
+    // Use the addReminder from the store
+    addReminder({ title: reminderTitle, description: reminderDescription });
+    console.log("New Reminder Added");
     setReminderTitle('');
     setReminderDescription('');
     setModalVisible(false);
   };
 
   const handleDeleteReminder = (idToDelete: string) => {
-    // Filter out the reminder with the matching ID
-    setReminders(reminders.filter(reminder => reminder.id !== idToDelete));
+    // Use the deleteReminder from the store
+    deleteReminder(idToDelete);
     console.log("Deleted Reminder ID:", idToDelete);
   };
 
@@ -94,18 +105,32 @@ export default function HomeScreen() {
           >
             <VStack space="md" reversed={false} className="pb-20">
               {reminders.map((reminder, index) => (
+                <Animated.View
+                  key={reminder.id}
+                  layout={Layout.duration(300)}
+                  exiting={FadeOut.duration(300)}
+                  entering={SlideInRight.duration(300)}
+                >
                 <Pressable
-                  key={index} // Consider a more robust key in a real app (e.g., a unique ID from your data)
-                  onPress={() => router.push("/actionsheet")}
+                  key={index}
+                  onPress={() => router.push({
+                            pathname: `/details/${reminder.id}`, // Dynamic route
+                            params: {
+                              title: reminder.title,
+                              description: reminder.description,
+                            },
+                          })}
                 >
                   <Box className="w-[350px] border-2 border-solid" >
                     <ReminderCard
-                      id={reminder.id} // Pass the id to ReminderCard
+                      id={reminder.id}
                       title={reminder.title}
                       description={reminder.description}
-                      onDelete={handleDeleteReminder} // Pass the delete function
-                    />                  </Box>
+                      onDelete={handleDeleteReminder}
+                    />                  
+                  </Box>
                 </Pressable>
+                </Animated.View>
               ))}
             </VStack>
           </HStack>
@@ -158,8 +183,6 @@ export default function HomeScreen() {
               >
                 <InputField 
                   value={reminderDescription}
-                  multiline
-                  numberOfLines={4}
                   onChangeText={setReminderDescription}
                   placeholder="Reminder Description"
                 />
@@ -185,47 +208,6 @@ export default function HomeScreen() {
           </ModalFooter>
         </ModalContent>
       </Modal>
-
-      {/* <Modal
-        animationType="slide"
-        transparent={true}
-        visible={isModalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View className="flex-1 justify-center items-center bg-black/50">
-          <View className="bg-white p-6 rounded-lg w-4/5">
-            <Heading className="mb-4 text-2xl">Create New Reminder</Heading>
-            <TextInput
-              className="border border-gray-300 p-3 rounded-md mb-3 text-base"
-              placeholder="Reminder Title"
-              value={reminderTitle}
-              onChangeText={setReminderTitle}
-            />
-            <TextInput
-              className="border border-gray-300 p-3 rounded-md mb-4 text-base"
-              placeholder="Reminder Description"
-              value={reminderDescription}
-              onChangeText={setReminderDescription}
-              multiline
-              numberOfLines={4}
-            />
-            <View className="flex-row justify-end">
-              <TouchableOpacity
-                className="px-4 py-2 bg-gray-200 rounded-md mr-2"
-                onPress={() => setModalVisible(false)}
-              >
-                <Text className="text-gray-800 text-base">Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="px-4 py-2 bg-blue-600 rounded-md"
-                onPress={handleAddReminder}
-              >
-                <Text className="text-white text-base">Add Reminder</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal> */}
     </>
   );
 }
