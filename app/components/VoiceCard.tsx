@@ -47,7 +47,7 @@ export default function VoiceCard({ audioFile, onDelete }: VoiceCardProps) {
             try {
                 // Update initial duration if available after loading
                 if (playerStatus.isLoaded) {
-                    setPlaybackDuration(playerStatus.duration || 0);
+                setPlaybackDuration(playerStatus.duration || 0);
                 }
                 // Set a callback to update playback status in real-time
                 if (playerStatus.isLoaded) {
