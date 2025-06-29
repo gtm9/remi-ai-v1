@@ -6,25 +6,16 @@ import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
 import { CloseIcon, Icon } from "@/components/ui/icon";
 import { Input, InputField } from "@/components/ui/input";
-import {
-  Modal,
-  ModalBackdrop,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-} from "@/components/ui/modal";
+import { Modal, ModalBackdrop, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
-import { Plus } from "lucide-react-native";
+import { BellPlusIcon } from "lucide-react-native";
 import { cssInterop } from "nativewind";
 import React, { useEffect, useState } from "react";
 import {
-  // Modal, 
   ScrollView,
   TouchableOpacity, View
 } from 'react-native';
@@ -89,51 +80,66 @@ export default function HomeScreen() {
           <Heading className="mb-2 xl:mb-[18px] text-4xl lg:text-5xl xl:text-[56px]">
             Remi
           </Heading>
-          <TouchableOpacity
-            className="px-3 rounded-md bg-blue-700"
+          {reminders.length !== 0 && <TouchableOpacity
+            className="px-3 rounded-md"
             onPress={() => setModalVisible(true)}
           >
-            <Icon as={Plus} className="text-typography-500 m-2" />
-          </TouchableOpacity>
+            <Icon as={BellPlusIcon} className="text-typography-500 m-2 w-8 h-8" />
+          </TouchableOpacity>}
         </View>
-          <Text className="py-4 px-5 flex-row items-center w-full text-sm lg:text-base xl:text-lg">
-            Tell Remi what you need reminded of
-          </Text>
-        <ScrollView>
-          <HStack
-            className="flex-wrap justify-center gap-x-3 gap-y-4 md:gap-x-4 lg:gap-x-7 lg:gap-y-8 py-4 px-5 md:px-8 md:pt-9 xl:pt-[90px] lg:pt-[70px] lg:px-[70px] xl:px-[100px] max-w-[1730px] mx-auto"
-          >
-            <VStack space="md" reversed={false} className="pb-20">
-              {reminders.map((reminder, index) => (
-                <Animated.View
-                  key={reminder.id}
-                  layout={Layout.duration(300)}
-                  exiting={FadeOut.duration(300)}
-                  entering={SlideInRight.duration(300)}
-                >
-                <Pressable
-                  key={index}
-                  onPress={() => router.push({
-                            pathname: `/details/${reminder.id}`, // Dynamic route
-                            params: {
-                              title: reminder.title,
-                              description: reminder.description,
-                            },
-                          })}
-                >
-                  <Box className="w-[350px] border-2 border-solid" >
-                    <ReminderCard
-                      id={reminder.id}
-                      title={reminder.title}
-                      description={reminder.description}
-                      onDelete={handleDeleteReminder}
-                    />                  
-                  </Box>
-                </Pressable>
-                </Animated.View>
-              ))}
-            </VStack>
-          </HStack>
+        {reminders.length === 0 ? (<Text className="py-4 px-5 flex-row items-center w-full text-sm lg:text-base xl:text-lg">
+          Tell Remi what you need reminded of
+        </Text>) : 
+        (<Text className="py-4 px-5 flex-row items-center w-full text-sm lg:text-base xl:text-lg">
+          Reminders
+        </Text>)}
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+          {reminders.length === 0 ? (
+            <View className="flex-1 justify-center items-center">
+              <TouchableOpacity
+                activeOpacity={0.7} // This provides a subtle press animation
+                onPress={() => setModalVisible(true)}
+                className="p-8 rounded-full items-center justify-center mb-4" // Adjust padding for size
+              >
+                <Icon as={BellPlusIcon} className="text-typography-500 m-2 w-32 h-32" />
+              </TouchableOpacity>
+              <Text className="text-lg text-typography-500">Add a reminder</Text>
+            </View>
+          ) : (
+            <HStack
+              className="flex-wrap justify-center gap-x-3 gap-y-4 md:gap-x-4 lg:gap-x-7 lg:gap-y-8 py-4 px-5 md:px-8 md:pt-9 xl:pt-[90px] lg:pt-[70px] lg:px-[70px] xl:px-[100px] max-w-[1730px] mx-auto"
+            >
+              <VStack space="md" reversed={false} className="pb-20">
+                {reminders.map((reminder) => (
+                  <Animated.View
+                    key={reminder.id}
+                    layout={Layout.duration(300)}
+                    exiting={FadeOut.duration(300)}
+                    entering={SlideInRight.duration(300)}
+                  >
+                    <Pressable
+                      onPress={() => router.push({
+                        pathname: `/details/${reminder.id}`,
+                        params: {
+                          title: reminder.title,
+                          description: reminder.description,
+                        },
+                      })}
+                    >
+                      <Box className="w-[350px] border-2 border-solid" >
+                        <ReminderCard
+                          id={reminder.id}
+                          title={reminder.title}
+                          description={reminder.description}
+                          onDelete={handleDeleteReminder}
+                        />
+                      </Box>
+                    </Pressable>
+                  </Animated.View>
+                ))}
+              </VStack>
+            </HStack>
+          )}
         </ScrollView>
       </SafeAreaView>
 
