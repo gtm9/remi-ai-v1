@@ -1,12 +1,10 @@
+import { AddReminderModal } from "@/app/components/ReminderModal";
 import { addReminder, deleteReminder, getReminders, reminderEventEmitter } from "@/app/store/reminderStore";
 import ReminderCard from "@/components/ReminderCard";
 import { Box } from "@/components/ui/box";
-import { Button, ButtonText } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
-import { CloseIcon, Icon } from "@/components/ui/icon";
-import { Input, InputField } from "@/components/ui/input";
-import { Modal, ModalBackdrop, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader } from "@/components/ui/modal";
+import { Icon } from "@/components/ui/icon";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -143,7 +141,17 @@ export default function HomeScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      <Modal
+      <AddReminderModal
+        isOpen={isModalVisible}
+        onClose={() => setModalVisible(false)}
+        onAddReminder={handleAddReminder}
+        reminderTitle={reminderTitle}
+        setReminderTitle={setReminderTitle}
+        reminderDescription={reminderDescription}
+        setReminderDescription={setReminderDescription}
+      />
+
+      {/* <Modal
         isOpen={isModalVisible}
         onClose={() => {
           setModalVisible(false)
@@ -213,7 +221,7 @@ export default function HomeScreen() {
             </Button>
           </ModalFooter>
         </ModalContent>
-      </Modal>
+      </Modal> */}
     </>
   );
 }

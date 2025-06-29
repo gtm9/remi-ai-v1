@@ -1,6 +1,5 @@
 import { Avatar, AvatarFallbackText, AvatarImage } from '@/components/ui/avatar';
 import { Button, ButtonText } from '@/components/ui/button';
-import { Divider } from '@/components/ui/divider';
 import { Heading } from '@/components/ui/heading';
 import { HStack } from '@/components/ui/hstack';
 import { Icon } from '@/components/ui/icon';
@@ -18,9 +17,7 @@ import {
   User,
 } from "lucide-react-native";
 import { useState } from 'react';
-import {
-  ScrollView
-} from 'react-native';
+import ReminderComponent from '../components/notificationTesterTEMP';
 
 // export default function ProfileScreen() {
 //   // State to manage login status
@@ -134,27 +131,7 @@ const MobileProfilePage = () => {
   const [openLogoutAlertDialog, setOpenLogoutAlertDialog] =
     useState(false);
   return (
-    <ScrollView style={{ display: "flex" }}>
-      <VStack className="px-5 py-4 my-20 flex-1" space="lg">
-        <Heading className="mb-1">Profile</Heading>
-        <ProfileCard />
-        <Divider className="my-2" />
-        <PersonalInfoSection />
-        <Divider className="my-2" />
-        <HostingSection />
-        <Divider className="my-2" />
-        <SupportSection />
-        <Divider className="my-2" />
-        <LogoutButton
-          openLogoutAlertDialog={openLogoutAlertDialog}
-          setOpenLogoutAlertDialog={setOpenLogoutAlertDialog}
-        />
-      </VStack>
-      {/* <LogoutAlertDialog
-        setOpenLogoutAlertDialog={setOpenLogoutAlertDialog}
-        openLogoutAlertDialog={openLogoutAlertDialog}
-      /> */}
-    </ScrollView>
+    <ReminderComponent />
   );
 };
 
