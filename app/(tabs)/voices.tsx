@@ -177,9 +177,6 @@ export default function VoicesScreen() {
             // 2. Parse the response body as JSON
             const data = await response.json();
             // Now 'data' contains the actual JSON object from your Cloudflare API
-            console.log("71 data {}", JSON.stringify(data["s3Objects"][0]["key"], null, 4));
-            console.log("72 audioBucketResponse {}", JSON.stringify(data, null, 4));
-
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }

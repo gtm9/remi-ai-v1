@@ -1,7 +1,8 @@
-import { getReminderById, updateReminder } from '@/app/store/reminderStore';
+import { ReminderItem, useReminderStore } from '@/app/store/reminderStore';
 import { Heading } from '@/components/ui/heading';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'; // Import necessary hooks
 import { ChevronLeft, Save } from 'lucide-react-native'; // Import Save icon
 import React, { useEffect, useState } from 'react';
@@ -18,14 +19,20 @@ export default function DetailsScreen() {
   // State for editable fields
   const [editedTitle, setEditedTitle] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
-
+  const [reminderDate, setReminderDate] = useState(new Date());
+  const [reminder, setReminder] = useState<ReminderItem>();
+  const getReminderById = useReminderStore((state) => state.getReminderById);
+  const updateReminder = useReminderStore((state) => state.updateReminder);
+  
   // Effect to load initial data when the component mounts or id changes
   useEffect(() => {
     if (id) {
       const reminder = getReminderById(id);
       if (reminder) {
+        setReminder(reminder)
         setEditedTitle(reminder.title);
         setEditedDescription(reminder.description);
+        setReminderDate(new Date(reminder.date))
       } else {
         // If reminder not found by ID (e.g., direct deep link to non-existent ID)
         Alert.alert("Error", "Reminder not found.");
@@ -41,7 +48,7 @@ export default function DetailsScreen() {
     }
 
     // Call the update function from the central store
-    updateReminder(id, { title: editedTitle, description: editedDescription });
+    updateReminder(id, { title: editedTitle, description: editedDescription, date: reminderDate.toISOString() });
 
     Alert.alert("Success", "Reminder saved!", [{ text: "OK", onPress: () => router.back() }]);
   };
@@ -84,6 +91,18 @@ export default function DetailsScreen() {
           multiline
           numberOfLines={6}
           style={{ minHeight: 120 }} // Ensure enough space for description
+        />
+
+        <DateTimePicker
+          value={reminderDate}
+          mode="datetime"
+          display="default"
+          onChange={(event, selectedDate) => {
+            if (selectedDate) {
+              setReminderDate(selectedDate);
+            }
+          }}
+          style={{ marginBottom: 16 }}
         />
 
         {/* The save button is now in the header */}

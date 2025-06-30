@@ -3,6 +3,7 @@ import { Heading } from '@/components/ui/heading';
 import { CloseIcon, Icon } from '@/components/ui/icon';
 import { Input, InputField } from '@/components/ui/input';
 import { Modal, ModalBackdrop, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader } from '@/components/ui/modal';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
@@ -26,6 +27,8 @@ interface AddReminderModalProps {
   setReminderTitle: (title: string) => void;
   reminderDescription: string;
   setReminderDescription: (description: string) => void;
+  reminderDate: Date;
+  setReminderDate: (date: Date) => void;
 }
 
 export const AddReminderModal: React.FC<AddReminderModalProps> = ({
@@ -36,6 +39,8 @@ export const AddReminderModal: React.FC<AddReminderModalProps> = ({
   setReminderTitle,
   reminderDescription,
   setReminderDescription,
+  reminderDate,
+  setReminderDate,
 }) => {
 
     const [expoPushToken, setExpoPushToken] = useState('');
@@ -118,6 +123,17 @@ export const AddReminderModal: React.FC<AddReminderModalProps> = ({
                 placeholder="Reminder Description"
                 />
             </Input>
+            <DateTimePicker
+              value={reminderDate}
+              mode="datetime"
+              display="default"
+              onChange={(event, selectedDate) => {
+                if (selectedDate) {
+                  setReminderDate(selectedDate);
+                }
+              }}
+              style={{ marginBottom: 16 }}
+            />
             </ModalBody>
             <ModalFooter>
             <Button

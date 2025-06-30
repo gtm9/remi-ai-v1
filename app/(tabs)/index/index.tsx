@@ -1,5 +1,5 @@
 import { AddReminderModal } from "@/app/components/ReminderModal";
-import { addReminder, deleteReminder, getReminders, reminderEventEmitter } from "@/app/store/reminderStore";
+import { useReminderStore } from "@/app/store/reminderStore";
 import ReminderCard from "@/components/ReminderCard";
 import { Box } from "@/components/ui/box";
 import { Heading } from "@/components/ui/heading";
@@ -28,6 +28,7 @@ interface ReminderItem {
   id: string;
   title: string;
   description: string;
+  date: string;
 }
 
 export default function HomeScreen() {
@@ -37,19 +38,15 @@ export default function HomeScreen() {
   const [reminderDescription, setReminderDescription] = useState('');
   // Update state type to include id
   const [reminders, setReminders] = useState<ReminderItem[]>([]);
+  const [reminderDate, setReminderDate] = useState(new Date());
+  const getReminders = useReminderStore((state) => state.getReminders);
+  
+  const addReminder = useReminderStore((state) => state.addReminder);
+  const deleteReminder = useReminderStore((state) => state.deleteReminder);
 
   // Effect to listen for changes in the store and update local state
   useEffect(() => {
-    const handleRemindersChanged = () => {
-      setReminders(getReminders());
-    };
-
-    reminderEventEmitter.on('remindersChanged', handleRemindersChanged);
-
-    // Clean up listener on component unmount
-    return () => {
-      reminderEventEmitter.off('remindersChanged', handleRemindersChanged);
-    };
+    setReminders(getReminders());
   }, []);
   
   const handleAddReminder = () => {
@@ -57,11 +54,17 @@ export default function HomeScreen() {
       alert('Reminder title cannot be empty!');
       return;
     }
-    // Use the addReminder from the store
-    addReminder({ title: reminderTitle, description: reminderDescription });
-    console.log("New Reminder Added");
+    const newReminder: ReminderItem = {
+      id: `${Date.now()}`,
+      title: reminderTitle,
+      description: reminderDescription,
+      date: reminderDate.toISOString(),
+    };
+    addReminder({ ...newReminder });
+    setReminders([...reminders, newReminder]);
     setReminderTitle('');
     setReminderDescription('');
+    setReminderDate(new Date());
     setModalVisible(false);
   };
 
@@ -149,79 +152,9 @@ export default function HomeScreen() {
         setReminderTitle={setReminderTitle}
         reminderDescription={reminderDescription}
         setReminderDescription={setReminderDescription}
+        reminderDate={reminderDate}
+        setReminderDate={setReminderDate}
       />
-
-      {/* <Modal
-        isOpen={isModalVisible}
-        onClose={() => {
-          setModalVisible(false)
-        }}
-        size="md"
-      >
-        <ModalBackdrop />
-        <ModalContent>
-          <ModalHeader>
-            <Heading size="md" className="text-typography-950">
-              Add Reminder
-            </Heading>
-            <ModalCloseButton>
-              <Icon
-                as={CloseIcon}
-                size="md"
-                className="stroke-background-400 group-[:hover]/modal-close-button:stroke-background-700 group-[:active]/modal-close-button:stroke-background-900 group-[:focus-visible]/modal-close-button:stroke-background-900"
-              />
-            </ModalCloseButton>
-          </ModalHeader>
-          <ModalBody>
-              <Input
-                className="p-3 mb-3"
-                variant="outline"
-                size="md"
-                isDisabled={false}
-                isInvalid={false}
-                isReadOnly={false}
-              >
-                <InputField 
-                  placeholder="Reminder Title"
-                  value={reminderTitle}
-                  onChangeText={setReminderTitle}
-                />
-              </Input>
-              <Input
-                className="p-3 mb-4 h-20"
-                variant="outline"
-                size="md"
-                isDisabled={false}
-                isInvalid={false}
-                isReadOnly={false}
-              >
-                <InputField 
-                  value={reminderDescription}
-                  onChangeText={setReminderDescription}
-                  placeholder="Reminder Description"
-                />
-              </Input>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              variant="outline"
-              action="secondary"
-              onPress={() => {
-                setModalVisible(false)
-              }}
-            >
-              <ButtonText>Cancel</ButtonText>
-            </Button>
-            <Button
-              onPress={() => {
-                handleAddReminder()
-              }}
-            >
-              <ButtonText>Add</ButtonText>
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal> */}
     </>
   );
 }
