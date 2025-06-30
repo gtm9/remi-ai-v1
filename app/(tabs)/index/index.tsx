@@ -1,6 +1,6 @@
-import { useReminderStore } from "@/app/store/reminderStore";
-import ReminderCard from "@/components/ReminderCard";
-import { AddReminderModal } from "@/components/ReminderModal";
+import { ReminderItem, useReminderStore } from "@/app/store/reminderStore";
+import { AddReminderModal } from "@/components/AddReminderModal";
+import { ReminderCard } from "@/components/ReminderCard";
 import { Box } from "@/components/ui/box";
 import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
@@ -23,20 +23,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 cssInterop(SafeAreaView, { className: "style" });
 cssInterop(ExpoImage, { className: "style" });
 
-// Define the Reminder type consistent with ReminderCard's expectation
-interface ReminderItem {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-}
-
 export default function HomeScreen() {
   const router = useRouter();
   const [isModalVisible, setModalVisible] = useState(false);
   const [reminderTitle, setReminderTitle] = useState('');
   const [reminderDescription, setReminderDescription] = useState('');
   const [reminderDate, setReminderDate] = useState(new Date());
+  const [remindWithCall, setRemindWithCall] = useState(false);
+  const [selectedAudioFileId, setSelectedAudioFileId] = useState<string | null>('');
 
   const reminders = useReminderStore((state) => state.reminders);
   const addReminder = useReminderStore((state) => state.addReminder);
@@ -52,12 +46,16 @@ export default function HomeScreen() {
       title: reminderTitle,
       description: reminderDescription,
       date: reminderDate.toISOString(),
+      remindWithCall: remindWithCall,
+      selectedAudioFileId: selectedAudioFileId
     };
     addReminder({ ...newReminder });
     setReminderTitle('');
     setReminderDescription('');
     setReminderDate(new Date());
     setModalVisible(false);
+    setSelectedAudioFileId('')
+    setRemindWithCall(false)
   };
 
   const handleDeleteReminder = (idToDelete: string) => {
@@ -124,6 +122,8 @@ export default function HomeScreen() {
                           id={reminder.id}
                           title={reminder.title}
                           description={reminder.description}
+                          audioFileName={reminder.selectedAudioFileId}
+                          remindWithCall={reminder.remindWithCall}
                           onDelete={handleDeleteReminder}
                         />
                       </Box>
@@ -146,6 +146,10 @@ export default function HomeScreen() {
         setReminderDescription={setReminderDescription}
         reminderDate={reminderDate}
         setReminderDate={setReminderDate}
+        remindWithCall={remindWithCall}
+        setRemindWithCall={setRemindWithCall}
+        selectedAudioFileId={selectedAudioFileId}
+        setSelectedAudioFileId={setSelectedAudioFileId}
       />
     </>
   );

@@ -1,22 +1,11 @@
 // components/VoiceCard.tsx
 import { Card } from '@/components/ui/card'; // Assuming you have a Card component
 import { Icon } from '@/components/ui/icon';
+import { AudioFileItem } from '@/types/audio';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { Pause, Play, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
-
-const mp3 = "/Users/goutamchapalamadugu/Desktop/pegasus1.mp3"
-
-// Define the structure for an audio file item
-export interface AudioFileItem {
-  id: string;
-  name: string;
-  uri: string; // Local URI for the audio file
-  type: 'recorded' | 'uploaded';
-  duration?: number; // Optional: duration in milliseconds, useful for recorded audio
-}
-
 interface VoiceCardProps {
   audioFile: AudioFileItem;
   onDelete: (id: string) => void;
