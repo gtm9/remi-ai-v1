@@ -1,6 +1,6 @@
-import { AddReminderModal } from "@/app/components/ReminderModal";
 import { useReminderStore } from "@/app/store/reminderStore";
 import ReminderCard from "@/components/ReminderCard";
+import { AddReminderModal } from "@/components/ReminderModal";
 import { Box } from "@/components/ui/box";
 import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
@@ -12,7 +12,7 @@ import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import { BellPlusIcon } from "lucide-react-native";
 import { cssInterop } from "nativewind";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   ScrollView,
   TouchableOpacity, View
@@ -36,18 +36,11 @@ export default function HomeScreen() {
   const [isModalVisible, setModalVisible] = useState(false);
   const [reminderTitle, setReminderTitle] = useState('');
   const [reminderDescription, setReminderDescription] = useState('');
-  // Update state type to include id
-  const [reminders, setReminders] = useState<ReminderItem[]>([]);
   const [reminderDate, setReminderDate] = useState(new Date());
-  const getReminders = useReminderStore((state) => state.getReminders);
-  
+
+  const reminders = useReminderStore((state) => state.reminders);
   const addReminder = useReminderStore((state) => state.addReminder);
   const deleteReminder = useReminderStore((state) => state.deleteReminder);
-
-  // Effect to listen for changes in the store and update local state
-  useEffect(() => {
-    setReminders(getReminders());
-  }, []);
   
   const handleAddReminder = () => {
     if (!reminderTitle.trim()) {
@@ -61,7 +54,6 @@ export default function HomeScreen() {
       date: reminderDate.toISOString(),
     };
     addReminder({ ...newReminder });
-    setReminders([...reminders, newReminder]);
     setReminderTitle('');
     setReminderDescription('');
     setReminderDate(new Date());

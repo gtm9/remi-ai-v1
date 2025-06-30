@@ -7,8 +7,8 @@ import { Mic, StopCircle, Upload } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, LayoutAnimation, Platform, SafeAreaView, ScrollView, Text, TouchableOpacity, UIManager, View } from 'react-native';
 import Animated, { FadeOut, Layout, SlideInRight } from 'react-native-reanimated';
-import AudioNameModal from '../components/AudioNameModal';
-import VoiceCard from '../components/VoiceCard'; // Removed { AudioFileItem } from here as we'll define it globally or pass it
+import AudioNameModal from '../../components/AudioNameModal';
+import VoiceCard from '../../components/VoiceCard'; // Removed { AudioFileItem } from here as we'll define it globally or pass it
 
 
 // Define the AudioFileItem type to include 'remote' for Cloudflare files

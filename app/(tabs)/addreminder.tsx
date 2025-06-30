@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import ReminderComponent from '../components/notificationTesterTEMP';
+import ReminderComponent from '../../components/notificationTesterTEMP';
 
 // export default function ProfileScreen() {
 //   // State to manage login status

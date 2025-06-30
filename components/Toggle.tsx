@@ -2,7 +2,7 @@ import { Icon } from "@/components/ui/icon";
 import { Pressable } from "@/components/ui/pressable";
 import { MoonIcon, SunIcon } from "lucide-react-native";
 import React, { useContext } from "react";
-import { ThemeContext } from "../_layout";
+import { ThemeContext } from "../app/_layout";
 
 
 const ToggleMode = () => {
