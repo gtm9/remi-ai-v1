@@ -6,7 +6,24 @@ import { create } from 'zustand';
 // For simplicity, we'll define them here, assuming they are constant for the store's purpose.
 // If these need to be dynamic per user or environment, you might fetch them from config.
 const CLOUDFLARE_GETLIST_API_ENDPOINT = 'https://myportal-api.src.xyz/api/v1.1/R2/GetList?selectR2Bucket=REMI_AI_VOICE_AUDIO_BUCKET';
-const R2_PUBLIC_BASE_URL = 'https://pub-1075dcde11af4427bc47c49e86b83ff9.r2.dev/';
+export const R2_PUBLIC_BASE_URL = 'https://pub-1075dcde11af4427bc47c49e86b83ff9.r2.dev/';
+
+// Define the type for a generated audio item
+export interface GeneratedAudioItem {
+  id: string; // A unique ID for this generated audio
+  url: string; // The URL to the predicted audio file from Gradio
+  generatedAt: string; // ISO string timestamp of generation
+  promptText: string; // The text used as input for generation
+  // Add other properties if your Gradio output includes them (e.g., duration, other data)
+  // rawGradioResult?: any; // Optional: Store the full raw result for debugging/advanced use
+}
+
+interface GeneratedAudioState {
+  generatedAudios: GeneratedAudioItem[];
+  addGeneratedAudio: (audio: GeneratedAudioItem) => void;
+  removeGeneratedAudio: (id: string) => void;
+  // You might add a 'clearGeneratedAudios' action, etc.
+}
 
 interface AudioFilesState {
   audioFiles: AudioFileItem[];
@@ -23,6 +40,24 @@ interface AudioFilesState {
   // --- NEW: General reusable fetch function ---
   fetchAudioFiles: () => Promise<void>;
 }
+
+export const useGeneratedAudioStore = create<GeneratedAudioState>((set) => ({
+  generatedAudios: [],
+
+  addGeneratedAudio: (audio) => {
+    set((state) => ({
+      generatedAudios: [...state.generatedAudios, audio],
+    }));
+    console.log('Generated audio added to store:', audio.url);
+  },
+
+  removeGeneratedAudio: (id) => {
+    set((state) => ({
+      generatedAudios: state.generatedAudios.filter((item) => item.id !== id),
+    }));
+    console.log('Generated audio removed from store:', id);
+  },
+}));
 
 export const useAudioFilesStore = create<AudioFilesState>((set, get) => ({
   audioFiles: [],
@@ -82,6 +117,7 @@ export const useAudioFilesStore = create<AudioFilesState>((set, get) => ({
             uri: R2_PUBLIC_BASE_URL + file.key, // Use the constant base URL
             type: 'remote',
         }));
+        console.log("120 fetchedFiles",fetchedFiles)
         set({ audioFiles: fetchedFiles }); // Update audio files in the store
     } catch (error: any) {
         console.error('Failed to fetch audio files from Cloudflare:', error);

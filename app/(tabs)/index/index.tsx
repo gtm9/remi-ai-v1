@@ -1,3 +1,4 @@
+import { GeneratedAudioItem, useGeneratedAudioStore } from "@/app/store/audioFileStore";
 import { ReminderItem, useReminderStore } from "@/app/store/reminderStore";
 import { AddReminderModal } from "@/components/AddReminderModal";
 import { ReminderCard } from "@/components/ReminderCard";
@@ -14,6 +15,7 @@ import { BellPlusIcon } from "lucide-react-native";
 import { cssInterop } from "nativewind";
 import React, { useState } from "react";
 import {
+  Alert,
   ScrollView,
   TouchableOpacity, View
 } from 'react-native';
@@ -31,12 +33,119 @@ export default function HomeScreen() {
   const [reminderDate, setReminderDate] = useState(new Date());
   const [remindWithCall, setRemindWithCall] = useState(false);
   const [selectedAudioFileId, setSelectedAudioFileId] = useState<string | null>('');
+  const CUSTOM_AUDIO_GENERATION_ENDPOINT = 'https://a65746cba64da85b13.gradio.live/';
+  // Local state for loading/playing indicators
+  const [isPredicting, setIsPredicting] = useState(false); // New loading state for prediction
+  const [isPlayingGradioAudio, setIsPlayingGradioAudio] = useState<string | null>(null); // Stores ID of currently playing audio
 
   const reminders = useReminderStore((state) => state.reminders);
   const addReminder = useReminderStore((state) => state.addReminder);
   const deleteReminder = useReminderStore((state) => state.deleteReminder);
-  
-  const handleAddReminder = () => {
+  const addGeneratedAudio = useGeneratedAudioStore((state) => state.addGeneratedAudio);
+  const generatedAudios = useGeneratedAudioStore((state) => state.generatedAudios); // To display them later
+  const removeGeneratedAudio = useGeneratedAudioStore((state) => state.removeGeneratedAudio); // To manage them
+  const BACKEND_BASE_URL = "http://localhost:3000";
+
+  // A reusable function to call your Gradio prediction endpoint
+  const callGradioPredictionApi = async (audioRemoteUrl: string, additionalText: string = "Hello!!") => {
+         // Basic validation
+      if (!audioRemoteUrl) {
+          Alert.alert("Error", "No audio URL provided for prediction.");
+          return;
+      }
+
+      try {
+        console.log("Preparing prediction request...");
+
+        // 1. Prepare the request body as a JSON object
+        const requestBody = {
+            audioUrl: audioRemoteUrl, // Send the public URL of the audio file
+            text: additionalText,
+            infer_mode: "ordinary reasoning",
+            max_text_tokens_per_sentence: 20,
+            sentences_bucket_max_size: 1,
+            param_5: true,
+            param_6: 0,
+            param_7: 0,
+            param_8: 0.1,
+            param_9: 0,
+            param_10: 1,
+            param_11: 3,
+            param_12: 50,
+        };
+
+        console.log("Sending prediction request to backend with URL in body...");
+
+        // 2. Make the fetch request with JSON body
+        const response = await fetch(`${BACKEND_BASE_URL}/predict-gradio`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json', // IMPORTANT: Now sending JSON
+            },
+            body: JSON.stringify(requestBody), // Convert JS object to JSON string
+        });
+
+        // 3. Handle the response
+        if (!response.ok) {
+            const errorBody = await response.text();
+            console.error(`Backend error status: ${response.status}, body: ${errorBody}`);
+            throw new Error(`Backend request failed: ${response.status} - ${errorBody}`);
+        }
+
+        const result = await response.json();
+        const generatedAudioUrl = result.predictedAudioUrl.data[0]
+        console.log('Gradio prediction result from backend: ', result.predictedAudioUrl.data[0].value);
+
+        Alert.alert('Prediction Success', 'Check console for the Gradio result!');
+        return result;
+
+    } catch (error: any) {
+        console.error('Error during Gradio prediction via backend:', error);
+        Alert.alert('Prediction Failed', `Could not get prediction: ${error.message || 'Unknown error'}`);
+        throw error;
+    }
+  };
+
+  const handleGradioPrediction = async (audioRemoteUrl: string, promptText: string) => {
+    setIsPredicting(true); // Start loading indicator
+    setModalVisible(false);
+    try {
+        // const result = await callGradioPredictionApi(audioRemoteUrl, promptText);
+        const result = await callGradioPredictionApi("https://github.com/gradio-app/gradio/raw/main/test/test_files/audio_sample.wav",reminderDescription);
+        console.log("114 result",result);
+
+        if (result && result.predictedAudioUrl.data[0].value.url) {
+            const newGeneratedAudio: GeneratedAudioItem = {
+                id: `received-at-${Date.now()}`, // Generate a unique ID
+                url: result.predictedAudioUrl.data[0].value.url,
+                generatedAt: result.predictedAudioUrl.time,
+                promptText: promptText,
+                // rawGradioResult: result.rawGradioResult, // Optional: if you passed it from backend
+            };
+
+            console.log("124 newGeneratedAudio",newGeneratedAudio)
+            
+            // --- Store the generated audio in Zustand ---
+            addGeneratedAudio(newGeneratedAudio);
+
+            Alert.alert("Gradio Prediction Success", `Generated audio stored! Play it from the list.`);
+
+            // Optionally, play it immediately
+            // await playGeneratedAudio(newGeneratedAudio.url, newGeneratedAudio.id);
+
+        } else {
+            Alert.alert("Prediction Result", "Gradio returned no usable audio URL in the expected format.");
+        }
+
+    } catch (error) {
+        console.error("Failed to get Gradio prediction:", error);
+        // Error handling is already in callGradioPredictionApi, but you can add more UI feedback here
+    } finally {
+        setIsPredicting(false); // End loading indicator
+    }
+  };
+
+  const handleAddReminder = async () => {
     if (!reminderTitle.trim()) {
       alert('Reminder title cannot be empty!');
       return;
@@ -50,10 +159,24 @@ export default function HomeScreen() {
       selectedAudioFileId: selectedAudioFileId
     };
     addReminder({ ...newReminder });
+    if (remindWithCall) {
+      // callGradioPredictionApi(R2_PUBLIC_BASE_URL+selectedAudioFileId,reminderDescription);
+      // const generatedAudioResult = callGradioPredictionApi("https://github.com/gradio-app/gradio/raw/main/test/test_files/audio_sample.wav",reminderDescription);
+
+      await handleGradioPrediction("audioRemoteUrl",reminderDescription);
+      console.log("166 generatedAudios",generatedAudios)
+      
+      // const generatedAudioFile: AudioFileItem = {
+      //     id: generatedAudioResult.time,
+      //     name: responseData.name || customName,
+      //     uri: responseData.uri,
+      //     type: 'uploaded',
+      // };
+    }
+    console.log("119 selectedAudioFileId",selectedAudioFileId);
     setReminderTitle('');
     setReminderDescription('');
     setReminderDate(new Date());
-    setModalVisible(false);
     setSelectedAudioFileId('')
     setRemindWithCall(false)
   };

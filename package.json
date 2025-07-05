@@ -31,6 +31,7 @@
     "@gluestack-ui/select": "^0.1.31",
     "@gluestack-ui/toast": "^1.0.9",
     "@gluestack-ui/tooltip": "^0.1.44",
+    "@gradio/client": "^1.15.4",
     "@legendapp/motion": "^2.4.0",
     "@react-native-community/datetimepicker": "8.4.1",
     "@react-navigation/bottom-tabs": "^7.3.10",

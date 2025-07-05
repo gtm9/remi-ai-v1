@@ -21,6 +21,7 @@ interface TempAudioFile {
     originalName: string;
     fileType: AudioFileType;
     defaultCustomName: string; // Used to pre-fill the modal
+    duration: number;
 }
 
 export default function VoicesScreen() {
@@ -47,7 +48,8 @@ export default function VoicesScreen() {
     // --- API Endpoints ---
     const CLOUDFLARE_DELETE_API_ENDPOINT = 'https://myportal-api.src.xyz/api/v1.1/R2/Delete';
     const R2_BUCKET_NAME_FOR_API = 'REMI_AI_VOICE_AUDIO_BUCKET';
-    const CLOUDFLARE_UPLOAD_API_ENDPOINT ='https://myportal-api.src.xyz/api/v1.1/R2/Upload?selectR2Bucket=REMI_AI_VOICE_AUDIO_BUCKET&filePath=audio_sources%2F';
+    const CLOUDFARE_UPLOAD_API_ENDPOINT ='https://myportal-api.src.xyz/api/v1.1/R2/Upload';
+    const CLOUDFARE_GET_AUDIO_API_ENDPOINT_PREFIX="https://remi-r2.src.xyz/"
 
     // This line is crucial for LayoutAnimation to work on Android
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -92,25 +94,26 @@ export default function VoicesScreen() {
             
             const formData = new FormData();
             formData.append('file', {
-                customMetadata: {
-                    id: `uploaded_${Date.now()}`,
-                    name: customName,
-                    type: 'uploaded',
-                },
+                id: `uploaded_${Date.now()}`,
                 uri: fileUri,
                 name: originalName,
                 type: fileType === 'recorded' ? 'audio/m4a' : 'audio/mpeg',
             } as any);
 
-            formData.append('customName', customName);
+            const url = new URL(CLOUDFARE_UPLOAD_API_ENDPOINT);
+            url.searchParams.append('selectR2Bucket', 'REMI_AI_VOICE_AUDIO_BUCKET');
+            url.searchParams.append('filePath', 'audio_sources');
+            url.searchParams.append('name', originalName);
+            url.searchParams.append('id', `uploaded_${Date.now()}`);
+            url.searchParams.append('type', fileType === 'recorded' ? 'audio/m4a' : 'audio/mpeg');
 
-            const response = await fetch(CLOUDFLARE_UPLOAD_API_ENDPOINT, {
+            const response = await fetch(url, {
                 method: 'POST',
-                body: formData,
                 headers: {
-                    "x-amz-meta-customname": customName,
-                    "x-amz-meta-uploadedby": "user123"  
+                    accept: '*/*',
+                    'Content-Type': 'multipart/form-data',
                 },
+                body: formData,
             });
 
             if (!response.ok) {
@@ -124,8 +127,9 @@ export default function VoicesScreen() {
             const newAudioFile: AudioFileItem = {
                 id: responseData.id || `uploaded_${Date.now()}`,
                 name: responseData.name || customName,
-                uri: responseData.uri,
+                uri: CLOUDFARE_GET_AUDIO_API_ENDPOINT_PREFIX+responseData.fileKey,
                 type: 'uploaded',
+                duration: recordingDuration
             };
             // --- Use Zustand's addAudioFile action ---
             addAudioFile(newAudioFile);
@@ -197,7 +201,7 @@ export default function VoicesScreen() {
         setIsRecording(true);
         try {
             await audioRecorder.prepareToRecordAsync();
-            await audioRecorder.record();
+            audioRecorder.record();
         } catch (error) {
             console.error('Error starting recording:', error);
             Alert.alert('Recording Failed', 'Could not start recording. Please try again.');
@@ -218,6 +222,7 @@ export default function VoicesScreen() {
                     originalName: defaultName + '.m4a',
                     fileType: 'recorded',
                     defaultCustomName: defaultName,
+                    duration: audioRecorder.currentTime
                 });
                 setIsNameModalVisible(true);
             } else {
@@ -243,11 +248,13 @@ export default function VoicesScreen() {
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 const asset = result.assets[0];
                 const defaultName = asset.name.split('.').slice(0, -1).join('.') || `picked_audio_${Date.now()}`;
+                // NEED TO BE REVISITED
                 setTempAudioFileData({
                     uri: asset.uri,
                     originalName: asset.name,
                     fileType: 'uploaded',
                     defaultCustomName: defaultName,
+                    duration: 2
                 });
                 setIsNameModalVisible(true);
             } else {
@@ -324,7 +331,7 @@ export default function VoicesScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-background-0">
+        <SafeAreaView className="flex-1 bg-background-0 pb-100">
             {/* Page Header */}
             <View className="py-4 px-5 flex-row items-center justify-between w-full">
                 <Heading className="mb-2 xl:mb-[18px] text-4xl lg:text-5xl xl:text-[56px]">
@@ -384,7 +391,7 @@ export default function VoicesScreen() {
             <Text className="text-lg font-semibold text-typography-800 px-5 mb-3">Your Audio Files</Text>
 
             {/* Display Loading Indicator or Audio Files List */}
-            <ScrollView className="flex-1 pb-20">
+            <ScrollView className="flex-1 pb-500">
                 {isLoadingFiles ? (
                     <ActivityIndicator size="large" color="#0000ff" className="mt-10" />
                 ) : audioFiles.length === 0 ? (

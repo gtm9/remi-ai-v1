@@ -12,75 +12,89 @@ interface VoiceCardProps {
 }
 
 export default function VoiceCard({ audioFile, onDelete }: VoiceCardProps) {
-    const player = useAudioPlayer(audioFile);
-    const playerStatus = useAudioPlayerStatus(player)
-    // const [sound, setSound] = useState<Audio.Sound | null>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [playbackPosition, setPlaybackPosition] = useState(0); // in ms
-    const [playbackDuration, setPlaybackDuration] = useState(audioFile.duration || 0); // in ms
+    const player = useAudioPlayer(audioFile.uri);
+    const playerStatus = useAudioPlayerStatus(player);
+
+    // Derived states
+    const isPlaying = playerStatus.playing;
+    const isLoaded = playerStatus.isLoaded;
+    const isBuffering = playerStatus.isBuffering;
+
+    // Define what constitutes a "critical" error that prevents playback
+    const hasCriticalError = playerStatus.reasonForWaitingToPlay && playerStatus.reasonForWaitingToPlay !== "unknown" && playerStatus.isLoaded === false; // Error + NOT loaded + not 'unknown'
+
+    // Condition to show the ActivityIndicator (true loading/buffering state)
+    const showActivityIndicator = !isLoaded && isBuffering && !hasCriticalError;
+    
+    // Condition to show the Play/Pause button (ready for playback)
+    const isReadyForPlayback = isLoaded && !isBuffering && !hasCriticalError;
+
+
+    const [playbackPosition, setPlaybackPosition] = useState(0);
+    const [playbackDuration, setPlaybackDuration] = useState(0);
 
     // Helper to format milliseconds into MM:SS
     const formatMillis = (millis: number | undefined) => {
         if (millis === undefined || isNaN(millis)) return '0:00';
+        // Assuming durationMillis and positionMillis are indeed in milliseconds
         const totalSeconds = Math.floor(millis / 1000);
         const minutes = Math.floor(totalSeconds / 60);
         const seconds = totalSeconds % 60;
         return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
     };
 
-    // Effect to load the sound when component mounts or URI changes
     useEffect(() => {
-        const loadSound = async () => {
-            setIsLoading(true);
-            try {
-                // Update initial duration if available after loading
-                if (playerStatus.isLoaded) {
-                setPlaybackDuration(playerStatus.duration || 0);
-                }
-                // Set a callback to update playback status in real-time
-                if (playerStatus.isLoaded) {
-                    setPlaybackPosition(playerStatus.currentTime);
-                    setIsPlaying(playerStatus.playing);
-                    if (playerStatus.didJustFinish) {
-                        setIsPlaying(false);
-                        player.seekTo(0)
-                    }
-                    // Update duration just in case it wasn't available on initial load
-                    setPlaybackDuration(playerStatus.duration || 0);
-                }
-                setIsLoading(!playerStatus.isLoaded && !playerStatus.isBuffering);
-            } catch (error) {
-                console.error('Error loading sound:', error);
-                Alert.alert("Error", "Could not load audio file.");
-            } finally {
-                setIsLoading(false);
+        if (isLoaded) { // Only update if sound is loaded
+            setPlaybackPosition(playerStatus.duration || 0);
+            if (playerStatus.duration && playerStatus.duration !== playbackDuration) {
+                 setPlaybackDuration(playerStatus.duration);
             }
-        };
-        loadSound();
-    }, [audioFile.uri]);
 
-    // Handler for play/pause button
+            // If it just finished playing, reset position to 0
+            if (playerStatus.didJustFinish) {
+                player.seekTo(0);
+                setPlaybackPosition(0);
+            }
+        }
+        
+        // Comprehensive log for debugging
+        console.log(`VoiceCard Status for ${audioFile.name} (${audioFile.uri}):`, {
+            isLoaded: playerStatus.isLoaded,
+            isPlaying: playerStatus.playing,
+            isBuffering: playerStatus.isBuffering,
+            error: playerStatus.reasonForWaitingToPlay, // Raw error value
+            hasCriticalError: hasCriticalError, // Our derived critical error state
+            duration: playerStatus.duration,
+            position: playerStatus.currentTime
+        });
+
+        // Alert only for critical, unhandled errors that prevent loading
+        if (playerStatus.reasonForWaitingToPlay && playerStatus.reasonForWaitingToPlay !== "unknown" && !playerStatus.isLoaded) {
+            Alert.alert("Audio Load Error", `Could not load audio for ${audioFile.name}: ${playerStatus.reasonForWaitingToPlay || playerStatus.reasonForWaitingToPlay}`);
+            console.error("Audio player critical error:", playerStatus.reasonForWaitingToPlay);
+        }
+
+    }, [playerStatus, isLoaded, hasCriticalError]); // Depend on playerStatus and derived states
+
     const handlePlayPause = async () => {
-        // if (!sound) {
-        // Alert.alert("Error", "Audio not loaded yet.");
-        // return;
-        // }
+        if (!isReadyForPlayback) { // Use the consolidated readiness check
+            Alert.alert("Error", "Audio is not ready for playback.");
+            return;
+        }
 
-        // if (isPlaying) {
-        //     await sound.pauseAsync();
-        // } else {
-        //     // If finished, restart from beginning
-        //     if (playbackPosition >= playbackDuration && playbackDuration > 0) {
-        //         await sound.setPositionAsync(0);
-        //     }
-        //     await sound.playAsync();
-        // }
-        player.seekTo(0);
-        player.play();
+        if (isPlaying) {
+            console.log("Pausing audio...");
+            await player.pause();
+        } else {
+            console.log("Playing audio...");
+            // If at the end or just finished, seek to start before playing
+            if (playerStatus.didJustFinish || (playerStatus.currentTime >= playerStatus.duration && playerStatus.duration > 0)) {
+                await player.seekTo(0);
+            }
+            await player.play();
+        }
     };
 
-    // Calculate progress for the bar
     const progressWidth = playbackDuration > 0 ? (playbackPosition / playbackDuration) * 100 : 0;
 
     return (
@@ -88,36 +102,38 @@ export default function VoiceCard({ audioFile, onDelete }: VoiceCardProps) {
             <View className="flex-1 mr-4">
                 <Text className="text-lg font-bold mb-1 text-typography-900">{audioFile.name}</Text>
                 <Text className="text-sm text-gray-500 mb-2">
-                {audioFile.type === 'recorded' ? 'Recorded Audio' : 'Uploaded File'}
+                    {audioFile.type === 'recorded' ? 'Recorded Audio' : (audioFile.type === 'uploaded' ? 'Uploaded File' : 'Generated Voice')}
                 </Text>
 
                 {/* Playback Progress Bar */}
                 <View className="w-full h-1 bg-gray-200 rounded-full my-1">
-                <View className="h-full bg-blue-500 rounded-full" style={{ width: `${progressWidth}%` }} />
+                    <View className="h-full bg-blue-500 rounded-full" style={{ width: `${progressWidth}%` }} />
                 </View>
                 <Text className="text-xs text-gray-500 mt-1">
-                {formatMillis(playbackPosition)} / {formatMillis(playbackDuration)}
+                    {formatMillis(playbackPosition)} / {formatMillis(playbackDuration)}
                 </Text>
             </View>
 
             <View className="flex-row items-center">
-                {isLoading && !isPlaying ? (
-                <ActivityIndicator size="small" color="#3B82F6" className="mr-2" />
-                ) : (
-                <TouchableOpacity
-                    onPress={handlePlayPause}
-                    className="p-3 rounded-full bg-blue-100 mr-2"
-                    disabled={isLoading} // Disable while loading
-                >
-                    <Icon as={isPlaying ? Pause : Play} size="lg" className="text-blue-600" />
-                </TouchableOpacity>
+                {showActivityIndicator ? ( // Show spinner only when truly loading/buffering and no critical error
+                    <ActivityIndicator size="small" color="#3B82F6" className="mr-2" />
+                ) : hasCriticalError ? ( // Show X icon only for critical errors that prevent loading
+                    <Icon as={X} size="lg" className="text-red-600 mr-2" />
+                ) : ( // Show play/pause button when ready for playback
+                    <TouchableOpacity
+                        onPress={handlePlayPause}
+                        className="p-3 rounded-full bg-blue-100 mr-2"
+                        disabled={!isReadyForPlayback} // Button is enabled only when ready
+                    >
+                        <Icon as={isPlaying ? Pause : Play} size="lg" className="text-blue-600" />
+                    </TouchableOpacity>
                 )}
 
                 <TouchableOpacity
-                onPress={() => onDelete(audioFile.id)}
-                className="p-2 rounded-full bg-red-100"
+                    onPress={() => onDelete(audioFile.id)}
+                    className="p-2 rounded-full bg-red-100"
                 >
-                <Icon as={X} size="md" className="text-red-600" />
+                    <Icon as={X} size="md" className="text-red-600" />
                 </TouchableOpacity>
             </View>
         </Card>

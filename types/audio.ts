@@ -3,6 +3,7 @@ export type AudioFileType = 'recorded' | 'uploaded' | 'remote';
 export interface AudioFileItem {
   id: string;
   name: string;
+  audioText?: string;
   uri: string; // Local or remote URI for the audio file
   type: AudioFileType;
   duration?: number; // Optional: duration in milliseconds, useful for recorded audio
