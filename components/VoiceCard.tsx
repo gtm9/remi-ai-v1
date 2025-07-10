@@ -13,6 +13,7 @@ interface VoiceCardProps {
 
 export default function VoiceCard({ audioFile, onDelete }: VoiceCardProps) {
     const player = useAudioPlayer(audioFile.uri);
+    console.log("16 VoiceCard audioFile.uri", audioFile.uri);
     const playerStatus = useAudioPlayerStatus(player);
 
     // Derived states
@@ -21,14 +22,13 @@ export default function VoiceCard({ audioFile, onDelete }: VoiceCardProps) {
     const isBuffering = playerStatus.isBuffering;
 
     // Define what constitutes a "critical" error that prevents playback
-    const hasCriticalError = playerStatus.reasonForWaitingToPlay && playerStatus.reasonForWaitingToPlay !== "unknown" && playerStatus.isLoaded === false; // Error + NOT loaded + not 'unknown'
+    // const hasCriticalError = playerStatus.reasonForWaitingToPlay && playerStatus.reasonForWaitingToPlay !== "unknown" && playerStatus.isLoaded === false; // Error + NOT loaded + not 'unknown'
 
     // Condition to show the ActivityIndicator (true loading/buffering state)
-    const showActivityIndicator = !isLoaded && isBuffering && !hasCriticalError;
+    const showActivityIndicator = !isLoaded && isBuffering;
     
     // Condition to show the Play/Pause button (ready for playback)
-    const isReadyForPlayback = isLoaded && !isBuffering && !hasCriticalError;
-
+    const isReadyForPlayback = isLoaded && !isBuffering;
 
     const [playbackPosition, setPlaybackPosition] = useState(0);
     const [playbackDuration, setPlaybackDuration] = useState(0);
@@ -56,14 +56,13 @@ export default function VoiceCard({ audioFile, onDelete }: VoiceCardProps) {
                 setPlaybackPosition(0);
             }
         }
-        
+
         // Comprehensive log for debugging
         console.log(`VoiceCard Status for ${audioFile.name} (${audioFile.uri}):`, {
             isLoaded: playerStatus.isLoaded,
             isPlaying: playerStatus.playing,
             isBuffering: playerStatus.isBuffering,
             error: playerStatus.reasonForWaitingToPlay, // Raw error value
-            hasCriticalError: hasCriticalError, // Our derived critical error state
             duration: playerStatus.duration,
             position: playerStatus.currentTime
         });
@@ -74,7 +73,7 @@ export default function VoiceCard({ audioFile, onDelete }: VoiceCardProps) {
             console.error("Audio player critical error:", playerStatus.reasonForWaitingToPlay);
         }
 
-    }, [playerStatus, isLoaded, hasCriticalError]); // Depend on playerStatus and derived states
+    }, [playerStatus, isLoaded]); // Depend on playerStatus and derived states
 
     const handlePlayPause = async () => {
         if (!isReadyForPlayback) { // Use the consolidated readiness check
@@ -117,8 +116,6 @@ export default function VoiceCard({ audioFile, onDelete }: VoiceCardProps) {
             <View className="flex-row items-center">
                 {showActivityIndicator ? ( // Show spinner only when truly loading/buffering and no critical error
                     <ActivityIndicator size="small" color="#3B82F6" className="mr-2" />
-                ) : hasCriticalError ? ( // Show X icon only for critical errors that prevent loading
-                    <Icon as={X} size="lg" className="text-red-600 mr-2" />
                 ) : ( // Show play/pause button when ready for playback
                     <TouchableOpacity
                         onPress={handlePlayPause}

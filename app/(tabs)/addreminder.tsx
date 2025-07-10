@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import ReminderComponent from '../../components/notificationTesterTEMP';
 
 // export default function ProfileScreen() {
@@ -110,8 +109,6 @@ import ReminderComponent from '../../components/notificationTesterTEMP';
 
 
 const MobileProfilePage = () => {
-  const [openLogoutAlertDialog, setOpenLogoutAlertDialog] =
-    useState(false);
   return (
     <ReminderComponent />
   );

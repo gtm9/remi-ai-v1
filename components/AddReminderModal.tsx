@@ -1,20 +1,20 @@
 import { useAudioFilesStore } from '@/app/store/audioFileStore';
+import { makeCallViaBackend } from '@/backend-calls/backend';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Heading } from '@/components/ui/heading';
 import { CheckIcon, CloseIcon, Icon } from '@/components/ui/icon';
 import { Input, InputField } from '@/components/ui/input';
 import { Modal, ModalBackdrop, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader } from '@/components/ui/modal';
+import { Text } from "@/components/ui/text";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
-import {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
+import { Platform, TouchableOpacity } from 'react-native';
+import Animated, {
+  Layout,
+  useSharedValue
 } from 'react-native-reanimated';
 import { AudioFileSelect } from './SelectAudioFile';
 import { Checkbox, CheckboxIcon, CheckboxIndicator, CheckboxLabel } from './ui/checkbox';
@@ -23,7 +23,7 @@ import { FormControl } from './ui/form-control';
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: true,
-    shouldSetBadge: false,
+    shouldSetBadge: true,
     shouldShowBanner: true,
     shouldShowList: true,
   }),
@@ -65,23 +65,28 @@ export const AddReminderModal: React.FC<AddReminderModalProps> = ({
     const fetchAudioFiles = useAudioFilesStore((state) => state.fetchAudioFiles);
 
     const [expoPushToken, setExpoPushToken] = useState('');
-    const [channels, setChannels] = useState<Notifications.NotificationChannel[]>([]);
     const [notification, setNotification] = useState<Notifications.Notification | undefined>(
-    undefined
+      undefined
     );
+    const [showPickerMode, setShowPickerMode] = useState<'date' | 'time' | null>(null);
+    const [isCalling, setIsCalling] = useState(false);
 
     // Reanimated shared value for height
     const descriptionHeight = useSharedValue(80); // Initial height for h-20 (assuming 20 * 4 = 80px)
 
-    // Animated style for the Input component
-    const animatedDescriptionStyle = useAnimatedStyle(() => {
-      return {
-        height: withTiming(descriptionHeight.value, {
-          duration: 300, // Animation duration
-          easing: Easing.ease, // Smooth easing
-        }),
-      };
-    });
+    const handleMakeCall = async () => {
+      setIsCalling(true); // Show a loading indicator
+      try {
+        const response = await makeCallViaBackend();
+        // You can do something with the response here if needed
+        console.log("Call initiation finished:", response);
+      } catch (error) {
+        console.error("Failed to initiate call:", error);
+        // Error alert is already handled in makeCallViaBackend
+      } finally {
+        setIsCalling(false); // Hide loading indicator
+      }
+    };
 
     // This useEffect handles initial setup: permissions and fetching Cloudflare files
     useEffect(() => {
@@ -92,23 +97,23 @@ export const AddReminderModal: React.FC<AddReminderModalProps> = ({
     }, []); // Empty dependency array means it runs once on mount
 
     useEffect(() => {
-      registerForPushNotificationsAsync().then(token => token && setExpoPushToken(token));
-
-      if (Platform.OS === 'android') {
-          Notifications.getNotificationChannelsAsync().then(value => setChannels(value ?? []));
-      }
-      const notificationListener = Notifications.addNotificationReceivedListener(notification => {
+        registerForPushNotificationsAsync()
+          .then(token => setExpoPushToken(token ?? ''))
+          .catch((error: any) => setExpoPushToken(`${error}`));
+    
+        const notificationListener = Notifications.addNotificationReceivedListener(notification => {
           setNotification(notification);
-      });
-
-      const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+          handleMakeCall(); // Call the function to handle call initiation
+        });
+    
+        const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
           console.log(response);
-      });
-
-      return () => {
+        });
+    
+        return () => {
           notificationListener.remove();
           responseListener.remove();
-      };
+        };
     }, []);
 
     const handleRemindWithCallChange = (isChecked: boolean) => {
@@ -125,8 +130,36 @@ export const AddReminderModal: React.FC<AddReminderModalProps> = ({
 
     const addReminderFinal = async () => {
         onAddReminder();
+        // await schedulePushNotification(timeZoneFormatter(reminderDate))
         await schedulePushNotification(reminderDate)
     }
+
+        // --- REFINED onChange handler for DateTimePicker ---
+    const onDateTimeChange = (event: any, selectedDateTime: Date | undefined) => {
+
+      // This log is for debugging purposes to see event types
+      console.log(`DateTimePicker onChange event type: ${event.type}, Platform: ${Platform.OS}`);
+
+      // On Android, the native dialog dismisses itself, so we hide the RN component
+      if (Platform.OS === 'android') {
+          setShowPickerMode(null); // Unmounts the component after interaction on Android
+      }
+      // // On iOS, the picker is inline and doesn't auto-dismiss.
+      // // We only hide it if the user explicitly 'dismissed' (cancelled).
+      else if (Platform.OS === 'ios' && event.type === 'dismissed') {
+          setShowPickerMode(null); // Hide on iOS only if user cancels
+      }
+      // If event.type === 'set' on iOS, we deliberately DO NOT hide it here,
+      // so it stays visible for further interaction or until user taps elsewhere.
+
+      if (event.type === 'set' && selectedDateTime) {
+        console.log("172 selectedDateTime")
+          setReminderDate(selectedDateTime);
+      }
+      // No 'else if (event.type === 'dismissed')' for Android specifically here,
+      // as the initial `setShowPickerMode(null)` for Android covers both 'set' and 'dismissed' events.
+    };
+
 
     return (
       <Modal
@@ -205,17 +238,37 @@ export const AddReminderModal: React.FC<AddReminderModalProps> = ({
               </Input>
             </Animated.View> */}
 
-            <DateTimePicker
+            {/* DateTimePicker trigger buttons */}
+            <Animated.View layout={Layout.duration(300)} style={{ marginBottom: 16 }}>
+              <TouchableOpacity onPress={() => setShowPickerMode('date')} className="p-3 border border-gray-300 rounded-md bg-white">
+                  <Text className="text-gray-700">Date: {reminderDate.toLocaleDateString()}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowPickerMode('time')} className="p-3 border border-gray-300 rounded-md bg-white mt-2">
+                  <Text className="text-gray-700">Time: {reminderDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* Conditionally render DateTimePicker */}
+            {showPickerMode && (
+                <DateTimePicker
+                    value={reminderDate}
+                    mode={showPickerMode}
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={(event, selectedDate)=>onDateTimeChange(event, selectedDate)}
+                />
+            )}
+
+            {Platform.OS === 'ios' && <DateTimePicker
               value={reminderDate}
               mode="datetime"
               display="default"
               onChange={(event, selectedDate) => {
                 if (selectedDate) {
-                  setReminderDate(selectedDate);
+                  setReminderDate(selectedDate)
                 }
               }}
               style={{ marginBottom: 16 }}
-            />
+            />}
 
             {/* Checkbox for "Remind me with a call" */}
             <FormControl className="mb-4">
@@ -262,38 +315,15 @@ export const AddReminderModal: React.FC<AddReminderModalProps> = ({
     );
 };
 
-let futureDate = new Date(2025, 6, 29, 12, 51, 0);
-
-export async function schedulePushNotification(reminderDate: Date) {
-    // Ensure the date is in the future
-    if (futureDate.getTime() <= Date.now()) {
-        console.warn("Attempted to schedule a notification in the past or present. Adjusting to 1 minute from now.");
-        futureDate = new Date(Date.now() * 1000);
-    }
-    await Notifications.scheduleNotificationAsync({
-        content: {
-        title: "You've got mail! 📬",
-        body: 'Here is the notification body',
-        data: { data: 'goes here', test: { test1: 'more data' }, url: '/settings' },
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-          year: reminderDate.getFullYear(),
-          month: reminderDate.getMonth(),
-          day: reminderDate.getDay(),
-          hour: reminderDate.getHours(),
-          minute: reminderDate.getMinutes(),
-          second: reminderDate.getSeconds()
-        },
-    });
+function handleRegistrationError(errorMessage: string) {
+  alert(errorMessage);
+  throw new Error(errorMessage);
 }
 
 async function registerForPushNotificationsAsync() {
-  let token;
-
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('myNotificationChannel', {
-      name: 'A channel is needed for the permissions prompt to appear',
+    Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#FF231F7C',
@@ -308,30 +338,53 @@ async function registerForPushNotificationsAsync() {
       finalStatus = status;
     }
     if (finalStatus !== 'granted') {
-      alert('Failed to get push token for push notification!');
+      handleRegistrationError('Permission not granted to get push token for push notification!');
       return;
     }
-    // Learn more about projectId:
-    // https://docs.expo.dev/push-notifications/push-notifications-setup/#configure-projectid
-    // EAS projectId is used here.
+    const projectId =
+      Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+    if (!projectId) {
+      handleRegistrationError('Project ID not found');
+    }
     try {
-      const projectId =
-        Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
-      if (!projectId) {
-        throw new Error('Project ID not found');
-      }
-      token = (
+      const pushTokenString = (
         await Notifications.getExpoPushTokenAsync({
           projectId,
         })
       ).data;
-      console.log(token);
-    } catch (e) {
-      token = `${e}`;
+      console.log(pushTokenString);
+      return pushTokenString;
+    } catch (e: unknown) {
+      handleRegistrationError(`${e}`);
     }
   } else {
-    alert('Must use physical device for Push Notifications');
+    handleRegistrationError('Must use physical device for push notifications');
   }
+}
 
-  return token;
+export async function schedulePushNotification(reminderDate: Date) {
+  console.log("347 reminderDate",reminderDate)
+  console.log("348 getFullYear",reminderDate.getFullYear())
+  console.log("349 getDay",reminderDate.getDate())
+  console.log("350 getMonth",reminderDate.getMonth()+1)
+  console.log("351 getHours",reminderDate.getHours())
+  console.log("352 getMinutes",reminderDate.getMinutes())
+  console.log("353 getSeconds",reminderDate.getSeconds())
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "You've got mail! 📬",
+      body: 'Here is the notification body',
+      data: { data: 'goes here', test: { test1: 'more data' } },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+      year: reminderDate.getFullYear(),
+      day: reminderDate.getDate(),
+      month: reminderDate.getMonth()+1,
+      hour: reminderDate.getHours(),
+      minute: reminderDate.getMinutes(),
+      seconds: 0,
+    },
+  });
 }

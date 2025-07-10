@@ -1,4 +1,4 @@
-import { GeneratedAudioItem, useGeneratedAudioStore } from "@/app/store/audioFileStore";
+import { useGeneratedAudioStore } from "@/app/store/audioFileStore";
 import { ReminderItem, useReminderStore } from "@/app/store/reminderStore";
 import { AddReminderModal } from "@/components/AddReminderModal";
 import { ReminderCard } from "@/components/ReminderCard";
@@ -9,6 +9,7 @@ import { Icon } from "@/components/ui/icon";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { AudioFileItem } from "@/types/audio";
 import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import { BellPlusIcon } from "lucide-react-native";
@@ -22,6 +23,7 @@ import {
 import Animated, { FadeOut, Layout, SlideInRight } from 'react-native-reanimated';
 import { SafeAreaView } from "react-native-safe-area-context";
 
+
 cssInterop(SafeAreaView, { className: "style" });
 cssInterop(ExpoImage, { className: "style" });
 
@@ -33,21 +35,23 @@ export default function HomeScreen() {
   const [reminderDate, setReminderDate] = useState(new Date());
   const [remindWithCall, setRemindWithCall] = useState(false);
   const [selectedAudioFileId, setSelectedAudioFileId] = useState<string | null>('');
-  const CUSTOM_AUDIO_GENERATION_ENDPOINT = 'https://a65746cba64da85b13.gradio.live/';
-  // Local state for loading/playing indicators
+
   const [isPredicting, setIsPredicting] = useState(false); // New loading state for prediction
   const [isPlayingGradioAudio, setIsPlayingGradioAudio] = useState<string | null>(null); // Stores ID of currently playing audio
 
+  const CLOUDFARE_GET_AUDIO_API_ENDPOINT_PREFIX="https://remi-r2.src.xyz/"
+  
   const reminders = useReminderStore((state) => state.reminders);
   const addReminder = useReminderStore((state) => state.addReminder);
   const deleteReminder = useReminderStore((state) => state.deleteReminder);
   const addGeneratedAudio = useGeneratedAudioStore((state) => state.addGeneratedAudio);
   const generatedAudios = useGeneratedAudioStore((state) => state.generatedAudios); // To display them later
   const removeGeneratedAudio = useGeneratedAudioStore((state) => state.removeGeneratedAudio); // To manage them
-  const BACKEND_BASE_URL = "http://localhost:3000";
+  const getReminderById = useReminderStore((state) => state.getReminderById);
+  const BACKEND_BASE_URL = "https://8fed9ad1a857.ngrok-free.app";
 
   // A reusable function to call your Gradio prediction endpoint
-  const callGradioPredictionApi = async (audioRemoteUrl: string, additionalText: string = "Hello!!") => {
+  const callGradioPredictionApi = async (audioRemoteUrl: string, additionalText: string = "Hello!!", reminderid: string) => {
          // Basic validation
       if (!audioRemoteUrl) {
           Alert.alert("Error", "No audio URL provided for prediction.");
@@ -85,6 +89,8 @@ export default function HomeScreen() {
             body: JSON.stringify(requestBody), // Convert JS object to JSON string
         });
 
+        console.log("93 response",response);
+
         // 3. Handle the response
         if (!response.ok) {
             const errorBody = await response.text();
@@ -93,9 +99,23 @@ export default function HomeScreen() {
         }
 
         const result = await response.json();
-        const generatedAudioUrl = result.predictedAudioUrl.data[0]
-        console.log('Gradio prediction result from backend: ', result.predictedAudioUrl.data[0].value);
+        console.log('Gradio prediction result from backend:', result);
+        const generatedAudioUrl = CLOUDFARE_GET_AUDIO_API_ENDPOINT_PREFIX + result.predictedAudioUrl.fileKey;
 
+        const reminder = getReminderById(reminderid)
+        if (reminder) {
+          const generatedAudio: AudioFileItem = {
+            id: `generated-${Date.now()}`, // Generate a unique ID
+            name: result.predictedAudioUrl.fileKey,
+            uri: generatedAudioUrl,
+            type: 'remote',
+          }
+          reminder.generatedAudio = generatedAudio
+          console.log("106 reminder",reminder)
+          addReminder(reminder)
+        }
+        
+        console.log("116 generatedAudioUrl",generatedAudioUrl)
         Alert.alert('Prediction Success', 'Check console for the Gradio result!');
         return result;
 
@@ -106,27 +126,28 @@ export default function HomeScreen() {
     }
   };
 
-  const handleGradioPrediction = async (audioRemoteUrl: string, promptText: string) => {
+  const handleGradioPrediction = async (audioRemoteUrl: string, promptText: string, reminderid: string) => {
     setIsPredicting(true); // Start loading indicator
     setModalVisible(false);
+    console.log("119 audioRemoteUrl",audioRemoteUrl)
     try {
-        // const result = await callGradioPredictionApi(audioRemoteUrl, promptText);
-        const result = await callGradioPredictionApi("https://github.com/gradio-app/gradio/raw/main/test/test_files/audio_sample.wav",reminderDescription);
-        console.log("114 result",result);
+        const result = await callGradioPredictionApi(audioRemoteUrl, promptText, reminderid);
+        // const result = await callGradioPredictionApi("https://github.com/gradio-app/gradio/raw/main/test/test_files/audio_sample.wav",reminderDescription);
 
         if (result && result.predictedAudioUrl.data[0].value.url) {
-            const newGeneratedAudio: GeneratedAudioItem = {
-                id: `received-at-${Date.now()}`, // Generate a unique ID
-                url: result.predictedAudioUrl.data[0].value.url,
-                generatedAt: result.predictedAudioUrl.time,
-                promptText: promptText,
-                // rawGradioResult: result.rawGradioResult, // Optional: if you passed it from backend
-            };
 
-            console.log("124 newGeneratedAudio",newGeneratedAudio)
+            // const newGeneratedAudio: GeneratedAudioItem = {
+            //     id: `received-at-${Date.now()}`, // Generate a unique ID
+            //     url: result.predictedAudioUrl.data[0].value.url,
+            //     generatedAt: result.predictedAudioUrl.time,
+            //     promptText: promptText,
+            //     // rawGradioResult: result.rawGradioResult, // Optional: if you passed it from backend
+            // };
+
+            // console.log("124 newGeneratedAudio",newGeneratedAudio)
             
-            // --- Store the generated audio in Zustand ---
-            addGeneratedAudio(newGeneratedAudio);
+            // // --- Store the generated audio in Zustand ---
+            // addGeneratedAudio(newGeneratedAudio);
 
             Alert.alert("Gradio Prediction Success", `Generated audio stored! Play it from the list.`);
 
@@ -163,18 +184,12 @@ export default function HomeScreen() {
       // callGradioPredictionApi(R2_PUBLIC_BASE_URL+selectedAudioFileId,reminderDescription);
       // const generatedAudioResult = callGradioPredictionApi("https://github.com/gradio-app/gradio/raw/main/test/test_files/audio_sample.wav",reminderDescription);
 
-      await handleGradioPrediction("audioRemoteUrl",reminderDescription);
-      console.log("166 generatedAudios",generatedAudios)
-      
-      // const generatedAudioFile: AudioFileItem = {
-      //     id: generatedAudioResult.time,
-      //     name: responseData.name || customName,
-      //     uri: responseData.uri,
-      //     type: 'uploaded',
-      // };
+      await handleGradioPrediction(CLOUDFARE_GET_AUDIO_API_ENDPOINT_PREFIX+selectedAudioFileId,reminderDescription, newReminder.id);
+
     }
-    console.log("119 selectedAudioFileId",selectedAudioFileId);
+
     setReminderTitle('');
+    setModalVisible(false)
     setReminderDescription('');
     setReminderDate(new Date());
     setSelectedAudioFileId('')
@@ -232,9 +247,11 @@ export default function HomeScreen() {
                     entering={SlideInRight.duration(300)}
                   >
                     <Pressable
+                      disabled={isPredicting}
                       onPress={() => router.push({
                         pathname: `/details/${reminder.id}`,
                         params: {
+                          id: reminder.id,
                           title: reminder.title,
                           description: reminder.description,
                         },

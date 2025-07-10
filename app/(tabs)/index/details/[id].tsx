@@ -12,7 +12,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'; // Import necessary hooks
 import { ChevronLeft, Save } from 'lucide-react-native'; // Import Save icon
 import React, { useEffect, useState } from 'react';
-import { Alert, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, TextInput, TouchableOpacity, View } from 'react-native';
+import Animated, { Layout } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function DetailsScreen() {
@@ -29,6 +30,7 @@ export default function DetailsScreen() {
   const [reminder, setReminder] = useState<ReminderItem>();
   const [selectedAudioFileId, setSelectedAudioFileId] = useState<string | null>('');
   const [remindWithCall, setRemindWithCall] = useState(false);
+  const [showPickerMode, setShowPickerMode] = useState<'date' | 'time' | null>(null);
 
   const getReminderById = useReminderStore((state) => state.getReminderById);
   const updateReminder = useReminderStore((state) => state.updateReminder);
@@ -40,6 +42,7 @@ export default function DetailsScreen() {
     if (id) {
       const currentReminder = getReminderById(id);
       if (currentReminder) {
+        console.log("45 Current Reminder:", currentReminder);
         setReminder(currentReminder)
         setEditedTitle(currentReminder.title);
         setEditedDescription(currentReminder.description);
@@ -89,6 +92,30 @@ export default function DetailsScreen() {
     updateReminder(id, { remindWithCall: remindWithCall });
   }
 
+  // --- REFINED onChange handler for DateTimePicker ---
+  const onDateTimeChange = (event: any, selectedDateTime: Date | undefined) => {
+      // This log is for debugging purposes to see event types
+      console.log(`DateTimePicker onChange event type: ${event.type}, Platform: ${Platform.OS}`);
+
+      // On Android, the native dialog dismisses itself, so we hide the RN component
+      if (Platform.OS === 'android') {
+          setShowPickerMode(null); // Unmounts the component after interaction on Android
+      }
+      // On iOS, the picker is inline and doesn't auto-dismiss.
+      // We only hide it if the user explicitly 'dismissed' (cancelled).
+      else if (Platform.OS === 'ios' && event.type === 'dismissed') {
+          setShowPickerMode(null); // Hide on iOS only if user cancels
+      }
+      // If event.type === 'set' on iOS, we deliberately DO NOT hide it here,
+      // so it stays visible for further interaction or until user taps elsewhere.
+
+      if (event.type === 'set' && selectedDateTime) {
+          setReminderDate(selectedDateTime);
+      }
+      // No 'else if (event.type === 'dismissed')' for Android specifically here,
+      // as the initial `setShowPickerMode(null)` for Android covers both 'set' and 'dismissed' events.
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-background-0">
       <Stack.Screen
@@ -129,7 +156,27 @@ export default function DetailsScreen() {
           style={{ minHeight: 120 }} // Ensure enough space for description
         />
 
-        <DateTimePicker
+        {/* DateTimePicker trigger buttons */}
+        {Platform.OS !== 'ios'  && <Animated.View layout={Layout.duration(300)} style={{ marginBottom: 16 }}>
+          <TouchableOpacity onPress={() => setShowPickerMode('date')} className="p-3 border border-gray-300 rounded-md bg-white">
+              <Text className="text-gray-700">Date: {reminderDate.toLocaleDateString()}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowPickerMode('time')} className="p-3 border border-gray-300 rounded-md bg-white mt-2">
+              <Text className="text-gray-700">Time: {reminderDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+          </TouchableOpacity>
+        </Animated.View>}
+
+        {/* Conditionally render DateTimePicker based on showPickerMode */}
+        {Platform.OS !== 'ios'  && showPickerMode && (
+            <DateTimePicker
+                value={reminderDate}
+                mode={showPickerMode}
+                // For iOS, 'spinner' usually gives a better inline visual than 'default'
+                onChange={onDateTimeChange}
+            />
+        )}
+
+        {Platform.OS === 'ios'  && <DateTimePicker
           value={reminderDate}
           mode="datetime"
           display="default"
@@ -139,7 +186,7 @@ export default function DetailsScreen() {
             }
           }}
           style={{ marginBottom: 16 }}
-        />
+        />}
         <FormControl className="mb-4">
           <Checkbox
             value="remind_with_call"
@@ -165,7 +212,7 @@ export default function DetailsScreen() {
           />
         )}
 
-        <VoiceCard key={handleCastGeneratedAudio(generatedAudios[0]).id} audioFile={handleCastGeneratedAudio(generatedAudios[0])} onDelete={()=>{}} />
+        {reminder?.generatedAudio && <VoiceCard key={id} audioFile={reminder?.generatedAudio} onDelete={()=>{}} />}
         {/* The save button is now in the header */}
       </View>
     </SafeAreaView>

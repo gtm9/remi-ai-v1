@@ -1,4 +1,4 @@
-export type AudioFileType = 'recorded' | 'uploaded' | 'remote';
+export type AudioFileType = 'recorded' | 'uploaded' | 'remote' | 'generated';
 
 export interface AudioFileItem {
   id: string;

@@ -5,7 +5,7 @@ import { create } from 'zustand';
 // Define your API Endpoints within the store or pass them as parameters if they vary
 // For simplicity, we'll define them here, assuming they are constant for the store's purpose.
 // If these need to be dynamic per user or environment, you might fetch them from config.
-const CLOUDFLARE_GETLIST_API_ENDPOINT = 'https://myportal-api.src.xyz/api/v1.1/R2/GetList?selectR2Bucket=REMI_AI_VOICE_AUDIO_BUCKET';
+const CLOUDFLARE_GETLIST_API_ENDPOINT = 'https://myportal-api.src.xyz/api/v1.1/R2/GetList?selectR2Bucket=REMI_AI_VOICE_AUDIO_BUCKET&prefix=audio_sources';
 export const R2_PUBLIC_BASE_URL = 'https://pub-1075dcde11af4427bc47c49e86b83ff9.r2.dev/';
 
 // Define the type for a generated audio item

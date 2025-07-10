@@ -85,6 +85,7 @@ export default function VoicesScreen() {
 
     // --- Function to upload audio to your backend ---
     const uploadAudio = async (fileUri: string, originalName: string, fileType: AudioFileType, customName: string) => {
+        console.log("88 fileUri",fileUri)
         setUploading(true); // Set local uploading state
         try {
             const fileInfo = await FileSystem.getInfoAsync(fileUri);

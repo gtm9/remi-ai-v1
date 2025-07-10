@@ -1,3 +1,4 @@
+import { AudioFileItem } from '@/types/audio';
 import { create } from 'zustand';
 
 export interface ReminderItem {
@@ -7,6 +8,7 @@ export interface ReminderItem {
   date: string;
   remindWithCall: boolean;
   selectedAudioFileId: string | null;
+  generatedAudio?: AudioFileItem
 }
 interface ReminderState {
   reminders: ReminderItem[];
