@@ -13,6 +13,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import Constants from "expo-constants";
 import * as Device from 'expo-device';
 import { Platform } from "react-native";
+import { ReminderItem } from "./store/reminderStore";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -85,16 +86,10 @@ export default function RootLayout() {
   );
   const [isCalling, setIsCalling] = useState(false);
 
-
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
-
-  const handleMakeCall = async () => {
+  const handleMakeCall = async (generatedAudioUrl: string,reminder: ReminderItem) => {
     setIsCalling(true); // Show a loading indicator
     try {
-      const response = await makeCallViaBackend();
+      const response = await makeCallViaBackend(generatedAudioUrl,reminder);
       // You can do something with the response here if needed
       console.log("Call initiation finished:", response);
     } catch (error) {
@@ -112,7 +107,8 @@ export default function RootLayout() {
 
     const notificationListener = Notifications.addNotificationReceivedListener(notification => {
       setNotification(notification);
-      handleMakeCall(); // Call the function to handle call initiation
+      console.log("123 making a call",notification.request.content.data?.url);
+      handleMakeCall(notification.request.content.data?.url, notification.request.content.data.reminder); // Call the function to handle call initiation
     });
 
     const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
@@ -187,7 +183,7 @@ async function registerForPushNotificationsAsync() {
   }
 }
 
-export async function schedulePushNotification(reminderDate: Date) {
+export async function schedulePushNotification(generatedAudioMessage: string, reminderDate: Date,reminder: ReminderItem) {
   console.log("347 reminderDate",reminderDate)
   console.log("348 getFullYear",reminderDate.getFullYear())
   console.log("349 getDay",reminderDate.getDate())
@@ -200,7 +196,12 @@ export async function schedulePushNotification(reminderDate: Date) {
     content: {
       title: "You've got mail! 📬",
       body: 'Here is the notification body',
-      data: { data: 'goes here', test: { test1: 'more data' } },
+      data: { 
+        data: 'goes here', 
+        test: { test1: 'more data' },
+        url: reminder.generatedAudio || '',
+        reminder: reminder
+       },
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.CALENDAR,

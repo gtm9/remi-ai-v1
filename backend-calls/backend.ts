@@ -1,4 +1,5 @@
 // src/utils/callApi.ts
+import { ReminderItem } from '@/app/store/reminderStore';
 import { Alert } from 'react-native';
 
 // --- IMPORTANT: Configure your backend URL ---
@@ -21,7 +22,7 @@ const BACKEND_BASE_URL = "https://8fed9ad1a857.ngrok-free.app"; // <--- REMEMBER
  *
  * @returns {Promise<any>} A promise that resolves with the backend's response, or rejects on error.
  */
-export const makeCallViaBackend = async (generatedAudioUrl: string): Promise<any> => {
+export const makeCallViaBackend = async (generatedAudioUrl: string,reminder: ReminderItem): Promise<any> => {
     try {
         console.log("-----------------------------------------");
         console.log("Initiating call via backend...");
@@ -33,12 +34,12 @@ export const makeCallViaBackend = async (generatedAudioUrl: string): Promise<any
         const response = await fetch(`${BACKEND_BASE_URL}/make-call`, {
             method: 'POST', // It's a GET request, no body needed
             headers: {
-                'Accept': 'application/json', // Indicate we prefer JSON response
+                'Accept': 'application/json', // Indicate we prefer JSON response,
+                'Content-Type': 'application/json', // Specify content type as JSON
             },
+            body: JSON.stringify({ generatedAudioUrl:generatedAudioUrl,reminder: reminder  }), // Send the form data
          
         });
-        console.log("36 response",response)
-
         // Check if the HTTP response was successful
         if (!response.ok) {
             const errorBody = await response.text(); // Read error response as text

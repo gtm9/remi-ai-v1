@@ -1,5 +1,4 @@
 import { useAudioFilesStore } from '@/app/store/audioFileStore';
-import { makeCallViaBackend } from '@/backend-calls/backend';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Heading } from '@/components/ui/heading';
 import { CheckIcon, CloseIcon, Icon } from '@/components/ui/icon';
@@ -7,8 +6,6 @@ import { Input, InputField } from '@/components/ui/input';
 import { Modal, ModalBackdrop, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader } from '@/components/ui/modal';
 import { Text } from "@/components/ui/text";
 import DateTimePicker from '@react-native-community/datetimepicker';
-import Constants from 'expo-constants';
-import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useState } from 'react';
 import { Platform, TouchableOpacity } from 'react-native';
@@ -20,14 +17,6 @@ import { AudioFileSelect } from './SelectAudioFile';
 import { Checkbox, CheckboxIcon, CheckboxIndicator, CheckboxLabel } from './ui/checkbox';
 import { FormControl } from './ui/form-control';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
 
 interface AddReminderModalProps {
   isOpen: boolean;
@@ -43,6 +32,8 @@ interface AddReminderModalProps {
   setRemindWithCall: (remindWithCall: boolean) => void;
   selectedAudioFileId: string | null;
   setSelectedAudioFileId: (selectedAudioFileId: string | null) => void;
+  phoneNumber: string;
+  setPhoneNumber: (phoneNumber: string) => void;
 }
 
 export const AddReminderModal: React.FC<AddReminderModalProps> = ({
@@ -58,7 +49,9 @@ export const AddReminderModal: React.FC<AddReminderModalProps> = ({
   remindWithCall,
   setRemindWithCall,
   selectedAudioFileId,
-  setSelectedAudioFileId
+  setSelectedAudioFileId,
+  phoneNumber,
+  setPhoneNumber
 }) => {
 
     const audioFiles = useAudioFilesStore((state) => state.audioFiles);
@@ -69,24 +62,10 @@ export const AddReminderModal: React.FC<AddReminderModalProps> = ({
       undefined
     );
     const [showPickerMode, setShowPickerMode] = useState<'date' | 'time' | null>(null);
-    const [isCalling, setIsCalling] = useState(false);
 
     // Reanimated shared value for height
     const descriptionHeight = useSharedValue(80); // Initial height for h-20 (assuming 20 * 4 = 80px)
 
-    const handleMakeCall = async () => {
-      setIsCalling(true); // Show a loading indicator
-      try {
-        const response = await makeCallViaBackend();
-        // You can do something with the response here if needed
-        console.log("Call initiation finished:", response);
-      } catch (error) {
-        console.error("Failed to initiate call:", error);
-        // Error alert is already handled in makeCallViaBackend
-      } finally {
-        setIsCalling(false); // Hide loading indicator
-      }
-    };
 
     // This useEffect handles initial setup: permissions and fetching Cloudflare files
     useEffect(() => {
@@ -96,25 +75,6 @@ export const AddReminderModal: React.FC<AddReminderModalProps> = ({
         initializeScreen();
     }, []); // Empty dependency array means it runs once on mount
 
-    useEffect(() => {
-        registerForPushNotificationsAsync()
-          .then(token => setExpoPushToken(token ?? ''))
-          .catch((error: any) => setExpoPushToken(`${error}`));
-    
-        const notificationListener = Notifications.addNotificationReceivedListener(notification => {
-          setNotification(notification);
-          handleMakeCall(); // Call the function to handle call initiation
-        });
-    
-        const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-          console.log(response);
-        });
-    
-        return () => {
-          notificationListener.remove();
-          responseListener.remove();
-        };
-    }, []);
 
     const handleRemindWithCallChange = (isChecked: boolean) => {
       setRemindWithCall(isChecked);
@@ -131,7 +91,7 @@ export const AddReminderModal: React.FC<AddReminderModalProps> = ({
     const addReminderFinal = async () => {
         onAddReminder();
         // await schedulePushNotification(timeZoneFormatter(reminderDate))
-        await schedulePushNotification(reminderDate)
+
     }
 
         // --- REFINED onChange handler for DateTimePicker ---
@@ -160,6 +120,23 @@ export const AddReminderModal: React.FC<AddReminderModalProps> = ({
       // as the initial `setShowPickerMode(null)` for Android covers both 'set' and 'dismissed' events.
     };
 
+    const [phoneError, setPhoneError] = useState('');
+
+    // Phone number validation (simple E.164 or 10-digit check)
+    const validatePhoneNumber = (num: string) => {
+      // Accepts +1234567890 or 10 digits
+      const e164 = /^\+?[1-9]\d{9,14}$/;
+      return e164.test(num);
+    };
+
+    const handlePhoneNumberChange = (num: string) => {
+      setPhoneNumber(num);
+      if (!validatePhoneNumber(num)) {
+        setPhoneError('Please enter a valid phone number (e.g. +1234567890 or 10+ digits)');
+      } else {
+        setPhoneError('');
+      }
+    };
 
     return (
       <Modal
@@ -196,6 +173,26 @@ export const AddReminderModal: React.FC<AddReminderModalProps> = ({
                 onChangeText={setReminderTitle}
               />
             </Input>
+
+            {/* Phone Number Input */}
+            <Input
+              className="p-3 mb-3"
+              variant="outline"
+              size="md"
+              isDisabled={false}
+              isInvalid={!!phoneError}
+              isReadOnly={false}
+            >
+              <InputField
+                placeholder="Phone Number (e.g. +1234567890)"
+                value={phoneNumber}
+                onChangeText={handlePhoneNumberChange}
+                keyboardType="phone-pad"
+              />
+            </Input>
+            {phoneError ? (
+              <Text className="text-red-500 mb-2">{phoneError}</Text>
+            ) : null}
 
             {/* Description Input (potentially expands) */}
             <Input
@@ -239,36 +236,71 @@ export const AddReminderModal: React.FC<AddReminderModalProps> = ({
             </Animated.View> */}
 
             {/* DateTimePicker trigger buttons */}
-            <Animated.View layout={Layout.duration(300)} style={{ marginBottom: 16 }}>
+            {(Platform.OS !== 'ios') && <Animated.View layout={Layout.duration(300)} style={{ marginBottom: 16 }}>
               <TouchableOpacity onPress={() => setShowPickerMode('date')} className="p-3 border border-gray-300 rounded-md bg-white">
                   <Text className="text-gray-700">Date: {reminderDate.toLocaleDateString()}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setShowPickerMode('time')} className="p-3 border border-gray-300 rounded-md bg-white mt-2">
                   <Text className="text-gray-700">Time: {reminderDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
               </TouchableOpacity>
-            </Animated.View>
+            </Animated.View>}
 
-            {/* Conditionally render DateTimePicker */}
-            {showPickerMode && (
+            {/* Conditionally render DateTimePicker or HTML input for web */}
+            {(Platform.OS === 'web') ? (
+              <>
+                {showPickerMode === 'date' && (
+                  <input
+                    type="date"
+                    value={reminderDate.toISOString().slice(0, 10)}
+                    onChange={e => {
+                      const newDate = new Date(reminderDate);
+                      const [year, month, day] = e.target.value.split('-');
+                      newDate.setFullYear(Number(year), Number(month) - 1, Number(day));
+                      setReminderDate(newDate);
+                      setShowPickerMode(null);
+                    }}
+                    style={{ marginBottom: 8, padding: 8, borderRadius: 6, border: '1px solid #ccc' }}
+                  />
+                )}
+                {showPickerMode === 'time' && (
+                  <input
+                    type="time"
+                    value={reminderDate.toTimeString().slice(0, 5)}
+                    onChange={e => {
+                      const newDate = new Date(reminderDate);
+                      const [hour, minute] = e.target.value.split(':');
+                      newDate.setHours(Number(hour), Number(minute));
+                      setReminderDate(newDate);
+                      setShowPickerMode(null);
+                    }}
+                    style={{ marginBottom: 8, padding: 8, borderRadius: 6, border: '1px solid #ccc' }}
+                  />
+                )}
+              </>
+            ) : (
+              showPickerMode && (
                 <DateTimePicker
-                    value={reminderDate}
-                    mode={showPickerMode}
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={(event, selectedDate)=>onDateTimeChange(event, selectedDate)}
+                  value={reminderDate}
+                  mode={showPickerMode}
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={(event, selectedDate)=>onDateTimeChange(event, selectedDate)}
                 />
+              )
             )}
 
-            {Platform.OS === 'ios' && <DateTimePicker
-              value={reminderDate}
-              mode="datetime"
-              display="default"
-              onChange={(event, selectedDate) => {
-                if (selectedDate) {
-                  setReminderDate(selectedDate)
-                }
-              }}
-              style={{ marginBottom: 16 }}
-            />}
+            {Platform.OS === 'ios' && (
+              <DateTimePicker
+                value={reminderDate}
+                mode="datetime"
+                display="default"
+                onChange={(event, selectedDate) => {
+                  if (selectedDate) {
+                    setReminderDate(selectedDate)
+                  }
+                }}
+                style={{ marginBottom: 16 }}
+              />
+            )}
 
             {/* Checkbox for "Remind me with a call" */}
             <FormControl className="mb-4">
@@ -295,7 +327,6 @@ export const AddReminderModal: React.FC<AddReminderModalProps> = ({
                 // Optionally pass isDisabled based on current modal state if needed
               />
             )}
-
           </ModalBody>
           <ModalFooter>
             <Button
@@ -314,77 +345,3 @@ export const AddReminderModal: React.FC<AddReminderModalProps> = ({
       </Modal>
     );
 };
-
-function handleRegistrationError(errorMessage: string) {
-  alert(errorMessage);
-  throw new Error(errorMessage);
-}
-
-async function registerForPushNotificationsAsync() {
-  if (Platform.OS === 'android') {
-    Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF231F7C',
-    });
-  }
-
-  if (Device.isDevice) {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-    if (finalStatus !== 'granted') {
-      handleRegistrationError('Permission not granted to get push token for push notification!');
-      return;
-    }
-    const projectId =
-      Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
-    if (!projectId) {
-      handleRegistrationError('Project ID not found');
-    }
-    try {
-      const pushTokenString = (
-        await Notifications.getExpoPushTokenAsync({
-          projectId,
-        })
-      ).data;
-      console.log(pushTokenString);
-      return pushTokenString;
-    } catch (e: unknown) {
-      handleRegistrationError(`${e}`);
-    }
-  } else {
-    handleRegistrationError('Must use physical device for push notifications');
-  }
-}
-
-export async function schedulePushNotification(reminderDate: Date) {
-  console.log("347 reminderDate",reminderDate)
-  console.log("348 getFullYear",reminderDate.getFullYear())
-  console.log("349 getDay",reminderDate.getDate())
-  console.log("350 getMonth",reminderDate.getMonth()+1)
-  console.log("351 getHours",reminderDate.getHours())
-  console.log("352 getMinutes",reminderDate.getMinutes())
-  console.log("353 getSeconds",reminderDate.getSeconds())
-
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: "You've got mail! 📬",
-      body: 'Here is the notification body',
-      data: { data: 'goes here', test: { test1: 'more data' } },
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-      year: reminderDate.getFullYear(),
-      day: reminderDate.getDate(),
-      month: reminderDate.getMonth()+1,
-      hour: reminderDate.getHours(),
-      minute: reminderDate.getMinutes(),
-      seconds: 0,
-    },
-  });
-}

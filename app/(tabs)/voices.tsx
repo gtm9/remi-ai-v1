@@ -35,6 +35,18 @@ export default function VoicesScreen() {
     const removeAudioFile = useAudioFilesStore((state) => state.removeAudioFile);
     const setDeletingId = useAudioFilesStore((state) => state.setDeletingId);
 
+    const customOptions = {
+        android: {
+            outputFormat: 'mpeg4',
+        },
+        ios: {
+            outputFormat: 'mp3',
+        },
+        sampleRate: 44100,
+        channels: 2,
+        bitRate: 128000,
+        format: 'mp3',
+    };
     // Existing local states that are not part of the global audio file management
     const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
     const [isRecording, setIsRecording] = useState(false);

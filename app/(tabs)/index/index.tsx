@@ -1,3 +1,4 @@
+import { schedulePushNotification } from "@/app/_layout";
 import { useGeneratedAudioStore } from "@/app/store/audioFileStore";
 import { ReminderItem, useReminderStore } from "@/app/store/reminderStore";
 import { AddReminderModal } from "@/components/AddReminderModal";
@@ -35,6 +36,7 @@ export default function HomeScreen() {
   const [reminderDate, setReminderDate] = useState(new Date());
   const [remindWithCall, setRemindWithCall] = useState(false);
   const [selectedAudioFileId, setSelectedAudioFileId] = useState<string | null>('');
+  const [phoneNumber, setPhoneNumber] = useState<string>('');
 
   const [isPredicting, setIsPredicting] = useState(false); // New loading state for prediction
   const [isPlayingGradioAudio, setIsPlayingGradioAudio] = useState<string | null>(null); // Stores ID of currently playing audio
@@ -43,6 +45,7 @@ export default function HomeScreen() {
   
   const reminders = useReminderStore((state) => state.reminders);
   const addReminder = useReminderStore((state) => state.addReminder);
+  const updateReminder = useReminderStore((state) => state.updateReminder);
   const deleteReminder = useReminderStore((state) => state.deleteReminder);
   const addGeneratedAudio = useGeneratedAudioStore((state) => state.addGeneratedAudio);
   const generatedAudios = useGeneratedAudioStore((state) => state.generatedAudios); // To display them later
@@ -65,17 +68,17 @@ export default function HomeScreen() {
         const requestBody = {
             audioUrl: audioRemoteUrl, // Send the public URL of the audio file
             text: additionalText,
-            infer_mode: "ordinary reasoning",
-            max_text_tokens_per_sentence: 20,
-            sentences_bucket_max_size: 1,
-            param_5: true,
-            param_6: 0,
-            param_7: 0,
-            param_8: 0.1,
-            param_9: 0,
-            param_10: 1,
-            param_11: 3,
-            param_12: 50,
+            infer_mode: "batch inference",
+            max_text_tokens_per_sentence: 120,
+            sentences_bucket_max_size: 4,
+            param_5:true,
+            param_6:0.8,
+            param_7:30,
+            param_8:1,
+            param_9:0,
+            param_10:3,
+            param_11:10,
+            param_12:600,
         };
 
         console.log("Sending prediction request to backend with URL in body...");
@@ -91,16 +94,19 @@ export default function HomeScreen() {
 
         console.log("93 response",response);
 
-        // 3. Handle the response
-        if (!response.ok) {
-            const errorBody = await response.text();
-            console.error(`Backend error status: ${response.status}, body: ${errorBody}`);
-            throw new Error(`Backend request failed: ${response.status} - ${errorBody}`);
-        }
+        // // 3. Handle the response
+        // if (!response.ok) {
+        //     const errorBody = await response.text();
+        //     console.error(`Backend error status: ${response.status}, body: ${errorBody}`);
+        //     throw new Error(`Backend request failed: ${response.status} - ${errorBody}`);
+        // }
 
         const result = await response.json();
         console.log('Gradio prediction result from backend:', result);
         const generatedAudioUrl = CLOUDFARE_GET_AUDIO_API_ENDPOINT_PREFIX + result.predictedAudioUrl.fileKey;
+
+        console.log("108 result",result);
+        console.log("109 generatedAudioUrl",generatedAudioUrl);
 
         const reminder = getReminderById(reminderid)
         if (reminder) {
@@ -112,7 +118,8 @@ export default function HomeScreen() {
           }
           reminder.generatedAudio = generatedAudio
           console.log("106 reminder",reminder)
-          addReminder(reminder)
+          updateReminder(reminder.id, {generatedAudio: generatedAudio});
+          await schedulePushNotification(generatedAudioUrl,reminderDate,reminder);
         }
         
         console.log("116 generatedAudioUrl",generatedAudioUrl)
@@ -126,7 +133,7 @@ export default function HomeScreen() {
     }
   };
 
-  const handleGradioPrediction = async (audioRemoteUrl: string, promptText: string, reminderid: string) => {
+  const handleGradioPrediction = async (audioRemoteUrl: string, promptText: string, reminderid: string,reminderPhoneNumber: string) => {
     setIsPredicting(true); // Start loading indicator
     setModalVisible(false);
     console.log("119 audioRemoteUrl",audioRemoteUrl)
@@ -177,14 +184,16 @@ export default function HomeScreen() {
       description: reminderDescription,
       date: reminderDate.toISOString(),
       remindWithCall: remindWithCall,
-      selectedAudioFileId: selectedAudioFileId
+      selectedAudioFileId: selectedAudioFileId,
+      phoneNumber: phoneNumber,
     };
     addReminder({ ...newReminder });
-    if (remindWithCall) {
+    if (remindWithCall && phoneNumber) {
       // callGradioPredictionApi(R2_PUBLIC_BASE_URL+selectedAudioFileId,reminderDescription);
       // const generatedAudioResult = callGradioPredictionApi("https://github.com/gradio-app/gradio/raw/main/test/test_files/audio_sample.wav",reminderDescription);
+      console.log("191 selectedAudioFileId", CLOUDFARE_GET_AUDIO_API_ENDPOINT_PREFIX+selectedAudioFileId);
 
-      await handleGradioPrediction(CLOUDFARE_GET_AUDIO_API_ENDPOINT_PREFIX+selectedAudioFileId,reminderDescription, newReminder.id);
+      await handleGradioPrediction(CLOUDFARE_GET_AUDIO_API_ENDPOINT_PREFIX+selectedAudioFileId,reminderDescription, newReminder.id, phoneNumber);
 
     }
 
@@ -239,7 +248,8 @@ export default function HomeScreen() {
               className="flex-wrap justify-center gap-x-3 gap-y-4 md:gap-x-4 lg:gap-x-7 lg:gap-y-8 py-4 px-5 md:px-8 md:pt-9 xl:pt-[90px] lg:pt-[70px] lg:px-[70px] xl:px-[100px] max-w-[1730px] mx-auto"
             >
               <VStack space="md" reversed={false} className="pb-20">
-                {reminders.map((reminder) => (
+                {reminders.map((reminder) => {
+                  return (
                   <Animated.View
                     key={reminder.id}
                     layout={Layout.duration(300)}
@@ -269,7 +279,7 @@ export default function HomeScreen() {
                       </Box>
                     </Pressable>
                   </Animated.View>
-                ))}
+                )})}
               </VStack>
             </HStack>
           )}
@@ -290,6 +300,8 @@ export default function HomeScreen() {
         setRemindWithCall={setRemindWithCall}
         selectedAudioFileId={selectedAudioFileId}
         setSelectedAudioFileId={setSelectedAudioFileId}
+        phoneNumber={phoneNumber}
+        setPhoneNumber={setPhoneNumber}
       />
     </>
   );

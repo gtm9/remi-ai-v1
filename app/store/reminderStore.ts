@@ -9,6 +9,7 @@ export interface ReminderItem {
   remindWithCall: boolean;
   selectedAudioFileId: string | null;
   generatedAudio?: AudioFileItem
+  phoneNumber?: string
 }
 interface ReminderState {
   reminders: ReminderItem[];
